@@ -1,0 +1,9 @@
+v: 0
+app_name: 'links_tool'
+micros:
+  - name: python-app
+    src: ./src
+    engine: python3.9
+    primary: true
+    public: true
+    run: uvicorn main:app
