@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from kry import DEV_ENV, Base
+from typing import Union
 
 APP_NAME = "Links"
 if DEV_ENV:
@@ -16,16 +17,24 @@ def get_links_list():
     """Redirect back to deta page"""
     return RedirectResponse(Base("others").get("deta_page")["value"])
 
+
 ERR_MSG = dict(detail="Link Not Found")
 
+
+RelU = lambda x: 0 if x < 0 else x
+
+
 @app.get("/{name}/{num}")
-def redirect_numbered_link(name: str, num: int):
+def redirect_numbered_link(name: str, num: Union[int, float]):
     """Redirecting Numbered Links"""
     link_obj = Base("links").get(name)
     if not link_obj:
         return ERR_MSG
-    link: str = link_obj["value"]
-    return RedirectResponse(link.format(num))
+    link: str = link_obj["link"]
+    prefix_zeros: int = link_obj["prefix_zeros"]
+    return RedirectResponse(
+        link.format(RelU(prefix_zeros - len(str(int(num)))) * "0" + str(num))
+    )
 
 
 @app.get("/{name}")
@@ -34,7 +43,7 @@ def redirect_link(name: str):
     link_obj = Base("links").get(name)
     if not link_obj:
         return ERR_MSG
-    link: str = link_obj["value"]
+    link: str = link_obj["link"]
     if "{0}" in link:
         return ERR_MSG
     return RedirectResponse(link)
