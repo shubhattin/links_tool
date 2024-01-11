@@ -24,17 +24,26 @@ ERR_MSG = dict(detail="Link Not Found")
 RelU = lambda x: 0 if x < 0 else x
 
 
+def get_redirect_response(link_obj, num=0):
+    link: str = link_obj["link"]
+    if "enabled" in link_obj:
+        enabled = link_obj["enabled"]
+        if not enabled:
+            return dict(detail="Link Disabled")
+    if "prefix_zeros" in link_obj:
+        prefix_zeros: int = link_obj["prefix_zeros"]
+        link = link.format(RelU(prefix_zeros - len(str(int(num)))) * "0" + str(num))
+    print(link)
+    return RedirectResponse(link)
+
+
 @app.get("/{name}/{num}")
 def redirect_numbered_link(name: str, num: Union[int, float]):
     """Redirecting Numbered Links"""
     link_obj = Base("links").get(name)
     if not link_obj:
         return ERR_MSG
-    link: str = link_obj["link"]
-    prefix_zeros: int = link_obj["prefix_zeros"]
-    return RedirectResponse(
-        link.format(RelU(prefix_zeros - len(str(int(num)))) * "0" + str(num))
-    )
+    return get_redirect_response(link_obj, num)
 
 
 @app.get("/{name}")
@@ -43,10 +52,9 @@ def redirect_link(name: str):
     link_obj = Base("links").get(name)
     if not link_obj:
         return ERR_MSG
-    link: str = link_obj["link"]
-    if "{0}" in link:
+    if "{0}" in link_obj["link"]:
         return ERR_MSG
-    return RedirectResponse(link)
+    return get_redirect_response(link_obj)
 
 
 if DEV_ENV:
