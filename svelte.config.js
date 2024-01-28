@@ -6,7 +6,7 @@ const config = {
   preprocess: vitePreprocess(),
   kit: {
     adapter: adapter({
-      runtime:'edge' // as there is no node dependency now
+      runtime: 'edge' // as there is no node dependency now
     }),
     alias: {
       '@tools/*': 'src/tools/*'

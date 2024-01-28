@@ -1,4 +1,3 @@
-import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { base_get } from '@tools/deta';
 import { z } from 'zod';
@@ -12,7 +11,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
   const name = name_prsr.data;
   const num = num_prsr.data;
-  const link_obj = (await base_get('links', name)) as link_obj_response_type;
+  const link_obj = await base_get<link_obj_response_type>('links', name);
   if (!link_obj || !('link' in link_obj) || !link_obj.link.includes('{0}'))
     return JSONResponse({ detail: 'Link Not Found' });
   return get_redirect_response(link_obj, num);

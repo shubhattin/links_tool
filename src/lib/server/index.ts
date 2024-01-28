@@ -2,6 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import { JSONResponse } from '@tools/responses';
 
 export interface link_obj_response_type {
+  key: string;
   enabled: boolean;
   link: string;
   prefix_zeros: number;
