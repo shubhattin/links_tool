@@ -1,16 +1,10 @@
 import { redirect } from '@sveltejs/kit';
 import { JSONResponse } from '@tools/responses';
-
-export interface link_obj_response_type {
-  key: string;
-  enabled: boolean;
-  link: string;
-  prefix_zeros: number;
-}
+import type { Links } from '@db/schema';
 
 const relU = (num: number) => (num >= 0 ? num : 0);
 
-export const get_redirect_response = (link_obj: link_obj_response_type, num: number = 0) => {
+export const get_redirect_response = (link_obj: Links, num: number = 0) => {
   let { link } = link_obj;
   const { enabled, prefix_zeros } = link_obj;
   if (!enabled) return JSONResponse({ detail: 'Link Disabled' });

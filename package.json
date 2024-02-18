@@ -8,6 +8,10 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "migration:generate": "drizzle-kit generate:pg",
+    "migration:push": "cd ./src/db && tsx migrate.ts",
+    "migration:drop": "drizzle-kit drop",
+    "migration:direct-push": "drizzle-kit push:pg",
     "lint": "prettier --check .",
     "format": "prettier --write ."
   },
@@ -15,17 +19,23 @@
     "@sveltejs/adapter-vercel": "^5.1.0",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^3.0.0",
+    "drizzle-kit": "^0.20.14",
     "prettier": "^3.1.1",
     "prettier-plugin-svelte": "^3.1.2",
     "svelte": "^4.2.7",
     "svelte-check": "^3.6.0",
     "tslib": "^2.4.1",
+    "tsx": "^4.7.1",
     "typescript": "^5.0.0",
     "vite": "^5.0.3"
   },
   "type": "module",
   "dependencies": {
+    "@neondatabase/serverless": "^0.8.1",
     "@picocss/pico": "^1.5.11",
+    "dotenv": "^16.4.4",
+    "drizzle-orm": "^0.29.3",
+    "drizzle-zod": "^0.5.1",
     "zod": "^3.22.4"
   }
 }

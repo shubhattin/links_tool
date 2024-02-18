@@ -9,7 +9,9 @@ const config = {
       runtime: 'edge' // as there is no node dependency now
     }),
     alias: {
-      '@tools/*': 'src/tools/*'
+      '@tools/*': 'src/tools/*',
+      '@db/*': 'src/db/*',
+      '@db': 'src/db/index.ts'
     }
   }
 };
