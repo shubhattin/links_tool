@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd app && bun install",
+  "buildCommand": "cd app && bun run build",
+  "outputDirectory": "app/.vercel/output/static",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/api"
+    },
+    {
+      "source": "/:name/:num",
+      "destination": "/api/api"
+    },
+    {
+      "source": "/:name",
+      "destination": "/api/api"
+    }
+  ]
+}

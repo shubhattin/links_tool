@@ -1,0 +1,12 @@
+CREATE TABLE links (
+    id VARCHAR(20) PRIMARY KEY,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    link TEXT NOT NULL,
+    prefix_zeros INTEGER NOT NULL DEFAULT 0,
+    name VARCHAR(30)
+);
+
+CREATE TABLE others (
+    key VARCHAR(20) PRIMARY KEY,
+    value TEXT NOT NULL
+);
