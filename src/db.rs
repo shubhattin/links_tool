@@ -1,13 +1,14 @@
 use crate::redirect::{self, Link};
-use diesel::pg::PgConnection;
-use diesel::r2d2::{ConnectionManager, Pool};
+use diesel_async::pooled_connection::deadpool::{BuildError, Pool, PoolError};
+use diesel_async::pooled_connection::AsyncDieselConnectionManager;
+use diesel_async::AsyncPgConnection;
 
 /// Shared PostgreSQL pool (one per serverless instance / process).
-pub type DbPool = Pool<ConnectionManager<PgConnection>>;
+pub type DbPool = Pool<AsyncPgConnection>;
 
 #[derive(Debug)]
 pub enum LookupError {
-    Pool(r2d2::Error),
+    Pool(PoolError),
     Query(diesel::result::Error),
 }
 
@@ -30,13 +31,15 @@ impl std::error::Error for LookupError {
 }
 
 /// Build a pool from `PG_DATABASE_URL` (call once at startup).
-pub fn build_pool(database_url: &str) -> Result<DbPool, r2d2::Error> {
-    let manager = ConnectionManager::<PgConnection>::new(database_url);
-    Pool::builder().build(manager)
+pub fn build_pool(database_url: &str) -> Result<DbPool, BuildError> {
+    let config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(database_url);
+    Pool::builder(config).build()
 }
 
-/// Load a link by short id using a pooled connection (blocking / Diesel sync API).
-pub fn lookup_link(pool: &DbPool, id: &str) -> Result<Option<Link>, LookupError> {
-    let mut conn = pool.get().map_err(LookupError::Pool)?;
-    redirect::find_link_by_id(&mut conn, id).map_err(LookupError::Query)
+/// Load a link by short id using an async pooled connection.
+pub async fn lookup_link(pool: &DbPool, id: &str) -> Result<Option<Link>, LookupError> {
+    let mut conn = pool.get().await.map_err(LookupError::Pool)?;
+    redirect::find_link_by_id(&mut conn, id)
+        .await
+        .map_err(LookupError::Query)
 }

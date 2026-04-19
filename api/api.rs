@@ -37,18 +37,12 @@ async fn redirect_by_name(
     if name.is_empty() {
         return links_tool::redirect::wrong_url();
     }
-    let pool = pool.clone();
-    match tokio::task::spawn_blocking(move || links_tool::db::lookup_link(&pool, &name)).await {
-        Ok(Ok(Some(row))) => links_tool::redirect::response_name_only(&row),
-        Ok(Ok(None)) => links_tool::redirect::link_not_found(),
-        Ok(Err(e)) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("database error: {e}"),
-        )
-            .into_response(),
+    match links_tool::db::lookup_link(&pool, &name).await {
+        Ok(Some(row)) => links_tool::redirect::response_name_only(&row),
+        Ok(None) => links_tool::redirect::link_not_found(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("task join error: {e}"),
+            format!("database error: {e}"),
         )
             .into_response(),
     }
@@ -65,18 +59,12 @@ async fn redirect_by_name_num(
         Ok(n) if n.is_finite() => n,
         _ => return links_tool::redirect::wrong_url(),
     };
-    let pool = pool.clone();
-    match tokio::task::spawn_blocking(move || links_tool::db::lookup_link(&pool, &name)).await {
-        Ok(Ok(Some(row))) => links_tool::redirect::response_with_num(&row, num_f),
-        Ok(Ok(None)) => links_tool::redirect::link_not_found(),
-        Ok(Err(e)) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("database error: {e}"),
-        )
-            .into_response(),
+    match links_tool::db::lookup_link(&pool, &name).await {
+        Ok(Some(row)) => links_tool::redirect::response_with_num(&row, num_f),
+        Ok(None) => links_tool::redirect::link_not_found(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("task join error: {e}"),
+            format!("database error: {e}"),
         )
             .into_response(),
     }

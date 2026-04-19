@@ -5,9 +5,8 @@ use axum::http::header::{HeaderValue, LOCATION};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
-use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use diesel::OptionalExtension;
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use serde::Serialize;
 
 #[derive(Queryable, Selectable, Clone)]
@@ -26,11 +25,12 @@ pub struct DetailBody<'a> {
     pub detail: &'a str,
 }
 
-pub fn find_link_by_id(conn: &mut PgConnection, id: &str) -> QueryResult<Option<Link>> {
+pub async fn find_link_by_id(conn: &mut AsyncPgConnection, id: &str) -> QueryResult<Option<Link>> {
     links::table
         .filter(links::id.eq(id))
         .select(Link::as_select())
         .first(conn)
+        .await
         .optional()
 }
 
