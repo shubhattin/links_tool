@@ -1,0 +1,6 @@
+# For `diesel migration run`, set DATABASE_URL or:
+#   export DATABASE_URL="$PG_DATABASE_URL"
+
+[print_schema]
+file = "src/schema.rs"
+custom_type_derives = ["diesel::query_builder::QueryId"]
