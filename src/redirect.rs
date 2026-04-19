@@ -1,8 +1,9 @@
 //! Short-link redirects (parity with SvelteKit `get_redirect_response` and `[name]` routes).
 
 use crate::schema::links;
+use axum::http::header::{HeaderValue, LOCATION};
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::response::{IntoResponse, Response};
 use axum::Json;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
@@ -21,8 +22,8 @@ pub struct Link {
 }
 
 #[derive(Serialize)]
-pub struct DetailBody {
-    pub detail: String,
+pub struct DetailBody<'a> {
+    pub detail: &'a str,
 }
 
 pub fn find_link_by_id(conn: &mut PgConnection, id: &str) -> QueryResult<Option<Link>> {
@@ -37,9 +38,7 @@ pub fn find_link_by_id(conn: &mut PgConnection, id: &str) -> QueryResult<Option<
 fn json_detail(detail: &'static str) -> Response {
     (
         StatusCode::OK,
-        Json(DetailBody {
-            detail: detail.to_string(),
-        }),
+        Json(DetailBody { detail }),
     )
         .into_response()
 }
@@ -78,7 +77,11 @@ fn build_redirect_response(row: &Link, num: f64) -> Response {
     }
     let replacement = format_substitution(row.prefix_zeros, num);
     let expanded = row.link.replacen("{0}", &replacement, 1);
-    Redirect::temporary(&expanded).into_response()
+    // SvelteKit `redirect(302, link)` — use 302 Found, not Axum `Redirect::temporary` (307).
+    match HeaderValue::try_from(expanded) {
+        Ok(location) => (StatusCode::FOUND, [(LOCATION, location)]).into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
 }
 
 fn format_substitution(prefix_zeros: i32, num: f64) -> String {
