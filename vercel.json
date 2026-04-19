@@ -5,10 +5,6 @@
   "outputDirectory": "app/.vercel/output/static",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/api"
-    },
-    {
       "source": "/:name/:num",
       "destination": "/api/api"
     },
