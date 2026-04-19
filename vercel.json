@@ -7,6 +7,14 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/api"
+    },
+    {
+      "source": "/:name/:num",
+      "destination": "/api/api"
+    },
+    {
+      "source": "/:name",
+      "destination": "/api/api"
     }
   ]
 }

@@ -1,9 +1,11 @@
 use axum::Router;
+use axum::extract::Path;
 use axum::http::Method;
 use axum::http::StatusCode;
 use axum::http::Uri;
 use axum::http::header::HeaderValue;
 use axum::response::IntoResponse;
+use axum::routing::get;
 use std::env;
 use tower::ServiceBuilder;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
@@ -20,6 +22,60 @@ async fn fallback(uri: Uri) -> impl IntoResponse {
         format!("Not found: {}", uri.path()),
     )
         .into_response()
+}
+
+async fn redirect_by_name(Path(name): Path<String>) -> impl IntoResponse {
+    if name.is_empty() {
+        return links_tool::redirect::wrong_url();
+    }
+    match tokio::task::spawn_blocking(move || {
+        let mut conn = links_tool::db::establish_connection();
+        links_tool::redirect::find_link_by_id(&mut conn, &name)
+    })
+    .await
+    {
+        Ok(Ok(Some(row))) => links_tool::redirect::response_name_only(&row),
+        Ok(Ok(None)) => links_tool::redirect::link_not_found(),
+        Ok(Err(_)) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "database error",
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "task join error",
+        )
+            .into_response(),
+    }
+}
+
+async fn redirect_by_name_num(Path((name, num)): Path<(String, String)>) -> impl IntoResponse {
+    if name.is_empty() {
+        return links_tool::redirect::wrong_url();
+    }
+    let num_f = match num.parse::<f64>() {
+        Ok(n) if n.is_finite() => n,
+        _ => return links_tool::redirect::wrong_url(),
+    };
+    match tokio::task::spawn_blocking(move || {
+        let mut conn = links_tool::db::establish_connection();
+        links_tool::redirect::find_link_by_id(&mut conn, &name)
+    })
+    .await
+    {
+        Ok(Ok(Some(row))) => links_tool::redirect::response_with_num(&row, num_f),
+        Ok(Ok(None)) => links_tool::redirect::link_not_found(),
+        Ok(Err(_)) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "database error",
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "task join error",
+        )
+            .into_response(),
+    }
 }
 
 #[tokio::main]
@@ -39,9 +95,13 @@ async fn main() -> Result<(), Error> {
                     .allow_headers(AllowHeaders::any()),
             )
         })
-        .unwrap_or_else(CorsLayer::new);
+        .unwrap_or_default();
 
-    let router = Router::new().fallback(fallback).layer(cors);
+    let router = Router::new()
+        .route("/{name}/{num}", get(redirect_by_name_num))
+        .route("/{name}", get(redirect_by_name))
+        .fallback(fallback)
+        .layer(cors);
 
     let app = ServiceBuilder::new()
         .layer(VercelLayer::new())
