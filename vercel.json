@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "apt-get update && apt-get install -y libpq-dev pkg-config && cd app && bun install",
+  "installCommand": "sh -c 'if command -v dnf >/dev/null 2>&1; then dnf install -y libpq-devel pkgconf-pkg-config; elif command -v apt-get >/dev/null 2>&1; then apt-get update && apt-get install -y libpq-dev pkg-config; else echo \"Install libpq dev packages (dnf: libpq-devel, apt: libpq-dev)\" >&2; exit 1; fi' && cd app && bun install",
   "buildCommand": "cd app && bun run build",
   "outputDirectory": "app/.vercel/output/static",
   "rewrites": [
