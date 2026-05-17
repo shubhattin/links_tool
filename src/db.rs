@@ -1,8 +1,8 @@
 use crate::redirect::{self, Link};
 use diesel::ConnectionError;
+use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::{BuildError, Pool, PoolError};
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, ManagerConfig};
-use diesel_async::AsyncPgConnection;
 use futures_util::FutureExt;
 
 /// Shared PostgreSQL pool (one per serverless instance / process).
@@ -41,8 +41,10 @@ pub fn build_pool(database_url: &str) -> Result<DbPool, BuildError> {
     let mut manager_config = ManagerConfig::<AsyncPgConnection>::default();
     manager_config.custom_setup = Box::new(|url| establish_tls_connection(url).boxed());
 
-    let config =
-        AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(database_url, manager_config);
+    let config = AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(
+        database_url,
+        manager_config,
+    );
     Pool::builder(config).build()
 }
 
@@ -52,7 +54,9 @@ pub fn build_pool(database_url: &str) -> Result<DbPool, BuildError> {
 /// the password) is decoded before being passed to `tokio_postgres::Config`.
 /// This avoids authentication failures when the password contains special
 /// characters that would need percent-encoding in a raw URL string.
-async fn establish_tls_connection(database_url: &str) -> Result<AsyncPgConnection, ConnectionError> {
+async fn establish_tls_connection(
+    database_url: &str,
+) -> Result<AsyncPgConnection, ConnectionError> {
     let url = ::url::Url::parse(database_url)
         .map_err(|e| ConnectionError::BadConnection(format!("invalid DB URL: {e}")))?;
 

@@ -1,10 +1,10 @@
 //! Short-link redirects (parity with SvelteKit `get_redirect_response` and `[name]` routes).
 
 use crate::schema::links;
-use axum::http::header::{HeaderValue, LOCATION};
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 use axum::Json;
+use axum::http::StatusCode;
+use axum::http::header::{HeaderValue, LOCATION};
+use axum::response::{IntoResponse, Response};
 use diesel::prelude::*;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use serde::Serialize;
@@ -36,11 +36,7 @@ pub async fn find_link_by_id(conn: &mut AsyncPgConnection, id: &str) -> QueryRes
 
 /// JSON error body with HTTP 200 (matches SvelteKit `JSONResponse`).
 fn json_detail(detail: &'static str) -> Response {
-    (
-        StatusCode::OK,
-        Json(DetailBody { detail }),
-    )
-        .into_response()
+    (StatusCode::OK, Json(DetailBody { detail })).into_response()
 }
 
 pub fn wrong_url() -> Response {
