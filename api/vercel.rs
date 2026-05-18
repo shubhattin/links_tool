@@ -15,10 +15,11 @@ async fn main() -> Result<(), Error> {
 
     let database_url =
         env::var("PG_DATABASE_URL").map_err(|_| io_error("PG_DATABASE_URL must be set"))?;
-    let pool = links_tool::db::build_pool(&database_url)
-        .map_err(|e| io_error(format!("failed to create database pool: {e}")))?;
+    let db = links_tool::db::connect(&database_url)
+        .await
+        .map_err(|e| io_error(format!("failed to connect to database: {e}")))?;
 
-    let router = links_tool::app::router(pool);
+    let router = links_tool::app::router(db);
 
     let app = ServiceBuilder::new()
         .layer(VercelLayer::new())

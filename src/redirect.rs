@@ -1,37 +1,15 @@
 //! Short-link redirects (parity with SvelteKit `get_redirect_response` and `[name]` routes).
 
-use crate::schema::links;
+pub use crate::entities::links::Model as Link;
 use axum::Json;
 use axum::http::StatusCode;
 use axum::http::header::{HeaderValue, LOCATION};
 use axum::response::{IntoResponse, Response};
-use diesel::prelude::*;
-use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use serde::Serialize;
-
-#[derive(Queryable, Selectable, Clone)]
-#[diesel(table_name = links)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct Link {
-    pub id: String,
-    pub enabled: bool,
-    pub link: String,
-    pub prefix_zeros: i32,
-    pub name: Option<String>,
-}
 
 #[derive(Serialize)]
 pub struct DetailBody<'a> {
     pub detail: &'a str,
-}
-
-pub async fn find_link_by_id(conn: &mut AsyncPgConnection, id: &str) -> QueryResult<Option<Link>> {
-    links::table
-        .filter(links::id.eq(id))
-        .select(Link::as_select())
-        .first(conn)
-        .await
-        .optional()
 }
 
 /// JSON error body with HTTP 200 (matches SvelteKit `JSONResponse`).
