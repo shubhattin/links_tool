@@ -6,11 +6,11 @@
   "rewrites": [
     {
       "source": "/:name/:num",
-      "destination": "/api/vercel"
+      "destination": "/api/api"
     },
     {
       "source": "/:name",
-      "destination": "/api/vercel"
+      "destination": "/api/api"
     }
   ]
 }
