@@ -9,9 +9,9 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock* ./
 COPY api ./api
 COPY src ./src
-COPY .cargo ./.cargo
 
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=x86_64-linux-musl-gcc
 RUN cargo build --release --target x86_64-unknown-linux-musl --bin main
 
 # Distroless static: no shell, CA store, or package manager — only what you copy in.

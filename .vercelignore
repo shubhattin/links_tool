@@ -1,7 +1,5 @@
-# Local CI/build artifacts do not need to be uploaded for source deployments.
-target
-app/node_modules
-app/build
-app/.svelte-kit
-app/.vercel/output
-
+# Ignore everything in the target directory except for release binaries
+target/**
+!target/release
+!target/x86_64-unknown-linux-gnu/release/**
+!target/aarch64-unknown-linux-gnu/release/**

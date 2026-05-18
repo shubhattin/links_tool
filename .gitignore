@@ -6,3 +6,4 @@ target
 
 # `cargo run -p links_tool --example db_export`
 export_out/
+.vercel
