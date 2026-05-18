@@ -37,7 +37,7 @@ path = "src/main.rs"
 
 [[bin]]
 name = "vercel"
-path = "vercel_rs/vercel.rs"
+path = "api/vercel.rs"
 
 [workspace]
 members = ["migration"]
