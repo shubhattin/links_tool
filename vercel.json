@@ -13,7 +13,7 @@
       "destination": "/api/vercel"
     },
     {
-      "source": "/api/*",
+      "source": "/api/:path*",
       "destination": "/api/vercel"
     }
   ]
