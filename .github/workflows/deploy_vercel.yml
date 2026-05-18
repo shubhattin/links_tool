@@ -1,69 +1,67 @@
 name: Deploy Vercel
 
 on:
-  push:
-    branches:
-      - main
+    push:
+        branches:
+            - main
 
 permissions:
-  contents: read
+    contents: read
 
 concurrency:
-  group: vercel-production
-  cancel-in-progress: true
+    group: vercel-production
+    cancel-in-progress: true
 
 env:
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+    VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
 jobs:
-  deploy:
-    name: Deploy production
-    runs-on: ubuntu-latest
+    deploy:
+        name: Deploy production
+        runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
 
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+            - name: Setup Node.js 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+            - name: Setup Rust
+              uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust artifacts
-        uses: Swatinem/rust-cache@v2
+            - name: Cache Rust artifacts
+              uses: Swatinem/rust-cache@v2
 
-      - name: Install frontend dependencies
-        working-directory: app
-        run: bun install --frozen-lockfile
+            - name: Install frontend dependencies
+              working-directory: app
+              run: bun install --frozen-lockfile
 
-      - name: Build static frontend
-        working-directory: app
-        run: bun run build
+            - name: Build static frontend
+              working-directory: app
+              run: bun run build
 
-      - name: Build Rust API binary
-        run: cargo build --bin api --release
+            - name: Build Rust API binary
+              run: cargo build --bin api --release
 
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+            - name: Install Vercel CLI
+              run: npm install --global vercel@latest
 
-      # Let Vercel produce the final .vercel/output bundle. This is the
-      # supported path for Rust functions, instead of hand-assembling .func
-      # directories in CI.
-      - name: Pull Vercel project settings
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+            - name: Pull Vercel project settings
+              run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      - name: Build Vercel deployment output
-        run: vercel build --prod --token="$VERCEL_TOKEN"
-
-      - name: Deploy prebuilt output to Vercel
-        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+            # We keep the Bun and Cargo builds above as CI smoke checks, then
+            # let Vercel perform the actual production build during deploy.
+            # This avoids the current vercel build/prebuilt failure for this
+            # mixed static + Rust function project.
+            - name: Deploy to Vercel
+              run: vercel deploy --prod --yes --archive=tgz --token="$VERCEL_TOKEN"
