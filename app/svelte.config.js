@@ -7,9 +7,7 @@ const config = {
   kit: {
     adapter: adapter(),
     alias: {
-      '@tools/*': 'src/tools/*',
-      '@db/*': 'src/db/*',
-      '@db': 'src/db/index.ts'
+      '@tools/*': 'src/tools/*'
     }
   }
 };

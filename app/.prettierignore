@@ -7,6 +7,3 @@ bun.lock
 .vercel
 node_modules
 .svelte-kit
-
-src/db/migrations
-src/db/scripts/out
