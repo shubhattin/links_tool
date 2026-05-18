@@ -45,9 +45,8 @@ impl DumpMode {
             Self::Dev => std::env::var("PG_DATABASE_URL").map_err(|_| {
                 "`PG_DATABASE_URL` required for dev mode (`--dev` default)".to_string()
             }),
-            Self::Prod => std::env::var("PG_DATABASE_URL1").map_err(|_| {
-                "`PG_DATABASE_URL1` required for prod mode (`--prod`)".to_string()
-            }),
+            Self::Prod => std::env::var("PG_DATABASE_URL1")
+                .map_err(|_| "`PG_DATABASE_URL1` required for prod mode (`--prod`)".to_string()),
         }
     }
 }

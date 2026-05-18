@@ -10,6 +10,10 @@ use axum::routing::get;
 use std::env;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 
+fn internal_server_error() -> impl IntoResponse {
+    StatusCode::INTERNAL_SERVER_ERROR
+}
+
 async fn fallback(uri: Uri) -> impl IntoResponse {
     (
         StatusCode::NOT_FOUND,
@@ -32,11 +36,7 @@ async fn redirect_by_name(
     match crate::db::lookup_link(&pool, &name).await {
         Ok(Some(row)) => crate::redirect::response_name_only(&row),
         Ok(None) => crate::redirect::link_not_found(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("database error: {e}"),
-        )
-            .into_response(),
+        Err(_) => internal_server_error().into_response(),
     }
 }
 
@@ -54,11 +54,7 @@ async fn redirect_by_name_num(
     match crate::db::lookup_link(&pool, &name).await {
         Ok(Some(row)) => crate::redirect::response_with_num(&row, num_f),
         Ok(None) => crate::redirect::link_not_found(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("database error: {e}"),
-        )
-            .into_response(),
+        Err(_) => internal_server_error().into_response(),
     }
 }
 

@@ -20,6 +20,7 @@ use links_tool::{
 };
 use sea_orm::EntityTrait;
 use serde::Serialize;
+use std::io::Write;
 
 #[derive(Serialize)]
 struct DbDump {
@@ -69,16 +70,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&out_dir)?;
 
     let path = out_dir.join(mode.json_filename());
-    std::fs::File::create(&path).and_then(|f| {
+    let tmp_path = out_dir.join(format!("{}.tmp", mode.json_filename()));
+
+    let write_result = (|| -> std::io::Result<()> {
+        let mut f = std::fs::File::create(&tmp_path)?;
         serde_json::to_writer_pretty(
-            f,
+            &mut f,
             &DbDump {
                 links: links_all,
                 others: others_all,
             },
         )
-        .map_err(|e| std::io::Error::other(e.to_string()))
-    })?;
+        .map_err(|e| std::io::Error::other(e.to_string()))?;
+        f.flush()?;
+        f.sync_all()?;
+        std::fs::rename(&tmp_path, &path)?;
+        Ok(())
+    })();
+
+    if write_result.is_err() {
+        let _ = std::fs::remove_file(&tmp_path);
+    }
+
+    write_result?;
 
     cli_log::ok(&format!(
         "Wrote {:?} {}",

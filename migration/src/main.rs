@@ -2,9 +2,9 @@
 //! or **`--database-url` / `-u`**.
 
 use clap::Parser;
+use sea_orm_cli::MigrateSubcommands;
 use sea_orm_migration::cli::run_migrate;
 use sea_orm_migration::sea_orm::{ConnectOptions, Database};
-use sea_orm_cli::MigrateSubcommands;
 
 fn load_env() {
     let _ = dotenvy::dotenv();

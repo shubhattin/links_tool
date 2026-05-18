@@ -1,6 +1,6 @@
 ## Watch Rust while you edit (`cargo-watch`)
 
-Install using `cargo install cargo-watch` or other binary distribution source (eg :- brew, pacman, dnf, etc)
+Install using `cargo install cargo-watch` or another binary distribution source (e.g., brew, pacman, dnf).  
 
 ```bash
 cargo watch -w src -x 'run --bin main'

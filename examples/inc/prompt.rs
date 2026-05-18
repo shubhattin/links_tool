@@ -1,6 +1,10 @@
 //! Shared stdin confirmation for [`db_export`] / [`db_import`] (`examples/*.rs`).
 //!
 //! Set `LINKS_TOOL_DB_SKIP_CONFIRM=1` to bypass (same idea as scripted runs).
+//!
+//! `crate::cli_log` refers to each **example** crate’s root: `db_export.rs` / `db_import.rs`
+//! declare `#[path = "inc/cli_log.rs"] mod cli_log;`, so this module shares that sibling, not
+//! the `links_tool` library crate.
 
 use std::io::{BufRead, Write};
 
@@ -26,6 +30,6 @@ pub fn interactive_yes(
         Ok(())
     } else {
         crate::cli_log::err_line(cancelled_message);
-        std::process::exit(1);
+        Err(std::io::Error::other(cancelled_message).into())
     }
 }
