@@ -19,7 +19,8 @@ async fn main() -> Result<(), Error> {
         .await
         .map_err(|e| io_error(format!("failed to connect to database: {e}")))?;
 
-    let router = links_tool::app::router(db);
+    let state = links_tool::app::build_state(db).map_err(io_error)?;
+    let router = links_tool::app::router(state);
 
     let app = ServiceBuilder::new()
         .layer(VercelLayer::new())

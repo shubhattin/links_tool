@@ -1,0 +1,379 @@
+use sea_orm_migration::prelude::*;
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[derive(DeriveIden)]
+enum User {
+    Table,
+    Id,
+    Name,
+    Email,
+    EmailVerified,
+    Image,
+    Role,
+    Banned,
+    BanReason,
+    BanExpires,
+    Username,
+    DisplayUsername,
+    IsMaintainer,
+    CreatedAt,
+    UpdatedAt,
+}
+
+#[derive(DeriveIden)]
+enum Account {
+    Table,
+    Id,
+    AccountId,
+    ProviderId,
+    UserId,
+    AccessToken,
+    RefreshToken,
+    IdToken,
+    AccessTokenExpiresAt,
+    RefreshTokenExpiresAt,
+    Scope,
+    Password,
+    CreatedAt,
+    UpdatedAt,
+}
+
+#[derive(DeriveIden)]
+enum Verification {
+    Table,
+    Id,
+    Identifier,
+    Value,
+    ExpiresAt,
+    CreatedAt,
+    UpdatedAt,
+}
+
+#[derive(DeriveIden)]
+enum Session {
+    Table,
+    Id,
+    UserId,
+    TokenHash,
+    ExpiresAt,
+    CreatedAt,
+    UpdatedAt,
+}
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_table(
+                Table::create()
+                    .table(User::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(User::Id)
+                            .string_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(User::Name).string_len(255).not_null())
+                    .col(
+                        ColumnDef::new(User::Email)
+                            .string_len(320)
+                            .not_null()
+                            .unique_key(),
+                    )
+                    .col(
+                        ColumnDef::new(User::EmailVerified)
+                            .boolean()
+                            .not_null()
+                            .default(false),
+                    )
+                    .col(ColumnDef::new(User::Image).text().null())
+                    .col(
+                        ColumnDef::new(User::Role)
+                            .string_len(32)
+                            .not_null()
+                            .default("user"),
+                    )
+                    .col(
+                        ColumnDef::new(User::Banned)
+                            .boolean()
+                            .not_null()
+                            .default(false),
+                    )
+                    .col(ColumnDef::new(User::BanReason).text().null())
+                    .col(
+                        ColumnDef::new(User::BanExpires)
+                            .timestamp_with_time_zone()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(User::Username)
+                            .string_len(64)
+                            .null()
+                            .unique_key(),
+                    )
+                    .col(ColumnDef::new(User::DisplayUsername).string_len(64).null())
+                    .col(
+                        ColumnDef::new(User::IsMaintainer)
+                            .boolean()
+                            .not_null()
+                            .default(false),
+                    )
+                    .col(
+                        ColumnDef::new(User::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        ColumnDef::new(User::UpdatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("idx_user_email")
+                    .table(User::Table)
+                    .col(User::Email)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(Account::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Account::Id)
+                            .string_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Account::AccountId)
+                            .string_len(320)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Account::ProviderId)
+                            .string_len(64)
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(Account::UserId).string_len(36).not_null())
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_account_user_id")
+                            .from(Account::Table, Account::UserId)
+                            .to(User::Table, User::Id)
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
+                    )
+                    .col(ColumnDef::new(Account::AccessToken).text().null())
+                    .col(ColumnDef::new(Account::RefreshToken).text().null())
+                    .col(ColumnDef::new(Account::IdToken).text().null())
+                    .col(
+                        ColumnDef::new(Account::AccessTokenExpiresAt)
+                            .timestamp_with_time_zone()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(Account::RefreshTokenExpiresAt)
+                            .timestamp_with_time_zone()
+                            .null(),
+                    )
+                    .col(ColumnDef::new(Account::Scope).text().null())
+                    .col(ColumnDef::new(Account::Password).text().null())
+                    .col(
+                        ColumnDef::new(Account::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        ColumnDef::new(Account::UpdatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("idx_account_user_id")
+                    .table(Account::Table)
+                    .col(Account::UserId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("idx_account_provider")
+                    .table(Account::Table)
+                    .col(Account::ProviderId)
+                    .col(Account::AccountId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(Verification::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Verification::Id)
+                            .string_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Verification::Identifier)
+                            .string_len(320)
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(Verification::Value).text().not_null())
+                    .col(
+                        ColumnDef::new(Verification::ExpiresAt)
+                            .timestamp_with_time_zone()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Verification::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        ColumnDef::new(Verification::UpdatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("idx_verification_identifier")
+                    .table(Verification::Table)
+                    .col(Verification::Identifier)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(Session::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Session::Id)
+                            .string_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Session::UserId).string_len(36).not_null())
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_session_user_id")
+                            .from(Session::Table, Session::UserId)
+                            .to(User::Table, User::Id)
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
+                    )
+                    .col(
+                        ColumnDef::new(Session::TokenHash)
+                            .string_len(64)
+                            .not_null()
+                            .unique_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Session::ExpiresAt)
+                            .timestamp_with_time_zone()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Session::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        ColumnDef::new(Session::UpdatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("idx_session_user_id")
+                    .table(Session::Table)
+                    .col(Session::UserId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("idx_session_expires_at")
+                    .table(Session::Table)
+                    .col(Session::ExpiresAt)
+                    .to_owned(),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_index(
+                Index::drop()
+                    .name("idx_session_expires_at")
+                    .table(Session::Table)
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Session::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Verification::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Account::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(User::Table).to_owned())
+            .await?;
+        Ok(())
+    }
+}
