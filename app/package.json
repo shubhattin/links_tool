@@ -8,7 +8,7 @@
     "openapi-ts": "openapi-ts",
     "sync-api": "bash ../scripts/sync-api.sh",
     "check-api": "bash ../scripts/check-api-codegen.sh",
-    "build": "bun run sync-api && svelte-kit sync && vite build",
+    "build": "bash ../scripts/sync-api.sh --release && bun run sync && vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && bun run check-api && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

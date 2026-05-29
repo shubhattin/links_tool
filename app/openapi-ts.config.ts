@@ -2,7 +2,10 @@ import { defineConfig } from '@hey-api/openapi-ts';
 
 export default defineConfig({
   input: './openapi/schema.json',
-  output: 'src/lib/api/generated',
+  output: {
+    path: 'src/lib/api/generated',
+    tsConfigPath: 'off'
+  },
   plugins: [
     '@hey-api/typescript',
     {
