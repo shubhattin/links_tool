@@ -3,15 +3,17 @@
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
   import { Monitor, Moon, Sun } from '@lucide/svelte';
   import { mode, setMode } from 'mode-watcher';
+
+  const currentMode = $derived(mode.current);
 </script>
 
 <DropdownMenu.Root>
   <DropdownMenu.Trigger>
     {#snippet child({ props })}
       <Button {...props} variant="ghost" size="icon" aria-label="Toggle theme">
-        {#if mode.current === 'dark'}
+        {#if currentMode === 'dark'}
           <Moon data-icon="inline-start" />
-        {:else if mode.current === 'light'}
+        {:else if currentMode === 'light'}
           <Sun data-icon="inline-start" />
         {:else}
           <Monitor data-icon="inline-start" />

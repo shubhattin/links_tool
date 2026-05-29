@@ -72,7 +72,9 @@ export async function fetchMe(): Promise<{ ok: true; user: AuthUser } | { ok: fa
   }
 }
 
-export async function refreshSession(): Promise<boolean> {
+let refreshPromise: Promise<boolean> | null = null;
+
+async function runRefreshSession(): Promise<boolean> {
   try {
     const res = await api.post('/api/auth/refresh', { throwHttpErrors: false });
     if (!res.ok) {
@@ -95,6 +97,15 @@ export async function refreshSession(): Promise<boolean> {
     clearSession();
     return false;
   }
+}
+
+export function refreshSession(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = runRefreshSession().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
 }
 
 /** After sign-in/sign-up: cookies are set; load profile from `/me`. */

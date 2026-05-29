@@ -37,12 +37,14 @@
           variant={panel === 'sign-in' ? 'default' : 'ghost'}
           size="sm"
           type="button"
+          aria-pressed={panel === 'sign-in'}
           onclick={() => switchPanel('sign-in')}>Sign in</Button
         >
         <Button
           variant={panel === 'sign-up' ? 'default' : 'ghost'}
           size="sm"
           type="button"
+          aria-pressed={panel === 'sign-up'}
           onclick={() => switchPanel('sign-up')}>Sign up</Button
         >
       </div>

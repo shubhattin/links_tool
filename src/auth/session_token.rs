@@ -22,6 +22,13 @@ pub struct IssuedRefresh {
     pub session_id: String,
 }
 
+#[derive(Debug)]
+pub enum RotateRefreshError {
+    SessionAlreadyRotated,
+    #[allow(dead_code)]
+    Db(sea_orm::DbErr),
+}
+
 pub async fn issue_refresh_session(
     db: &DbPool,
     user_id: &str,
@@ -39,7 +46,6 @@ pub async fn issue_refresh_session(
         expires_at: Set(expires.into()),
         created_at: Set(now.into()),
         updated_at: Set(now.into()),
-        ..Default::default()
     };
     model.insert(db).await?;
 
@@ -53,11 +59,17 @@ pub async fn rotate_refresh_session(
     db: &DbPool,
     old_session_id: &str,
     user_id: &str,
-) -> Result<IssuedRefresh, sea_orm::DbErr> {
-    session::Entity::delete_by_id(old_session_id)
+) -> Result<IssuedRefresh, RotateRefreshError> {
+    let delete_result = session::Entity::delete_by_id(old_session_id)
         .exec(db)
-        .await?;
-    issue_refresh_session(db, user_id).await
+        .await
+        .map_err(RotateRefreshError::Db)?;
+    if delete_result.rows_affected == 0 {
+        return Err(RotateRefreshError::SessionAlreadyRotated);
+    }
+    issue_refresh_session(db, user_id)
+        .await
+        .map_err(RotateRefreshError::Db)
 }
 
 pub async fn find_valid_session_by_token(

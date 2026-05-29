@@ -15,14 +15,19 @@
     e.preventDefault();
     error = '';
     loading = true;
-    const result = await apiSignUp({ name, email, password });
-    loading = false;
-    if (!result.ok) {
-      error = result.error;
-      return;
+    try {
+      const result = await apiSignUp({ name, email, password });
+      if (!result.ok) {
+        error = result.error;
+        return;
+      }
+      const ok = await completeAuth(result.data);
+      if (!ok) error = 'could not load session';
+    } catch {
+      error = 'request failed';
+    } finally {
+      loading = false;
     }
-    const ok = await completeAuth(result.data);
-    if (!ok) error = 'could not load session';
   }
 </script>
 

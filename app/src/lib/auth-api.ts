@@ -28,8 +28,12 @@ export async function apiSignUp(
     return { ok: false, error: input.error.issues[0]?.message ?? 'invalid input' };
   }
 
-  const res = await api.post('/api/auth/sign-up', { json: input.data, throwHttpErrors: false });
-  return parseSessionResponse(res);
+  try {
+    const res = await api.post('/api/auth/sign-up', { json: input.data, throwHttpErrors: false });
+    return parseSessionResponse(res);
+  } catch (err) {
+    return { ok: false, error: networkErrorMessage(err) };
+  }
 }
 
 export async function apiSignIn(
@@ -40,8 +44,17 @@ export async function apiSignIn(
     return { ok: false, error: input.error.issues[0]?.message ?? 'invalid input' };
   }
 
-  const res = await api.post('/api/auth/sign-in', { json: input.data, throwHttpErrors: false });
-  return parseSessionResponse(res);
+  try {
+    const res = await api.post('/api/auth/sign-in', { json: input.data, throwHttpErrors: false });
+    return parseSessionResponse(res);
+  } catch (err) {
+    return { ok: false, error: networkErrorMessage(err) };
+  }
+}
+
+function networkErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  return 'network error';
 }
 
 async function parseSessionResponse(

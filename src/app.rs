@@ -1,8 +1,8 @@
 use crate::auth::load_jwt_secret;
 use crate::db::DbPool;
 use axum::Router;
-use axum::http::Uri;
 use axum::http::StatusCode;
+use axum::http::Uri;
 use axum::http::header::HeaderValue;
 use axum::response::IntoResponse;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
@@ -37,7 +37,8 @@ fn cors_layer_from_env() -> CorsLayer {
             Some(
                 CorsLayer::new()
                     .allow_origin(AllowOrigin::exact(origin))
-                    .allow_headers(AllowHeaders::any()),
+                    .allow_headers(AllowHeaders::any())
+                    .allow_credentials(true),
             )
         })
         .unwrap_or_default()

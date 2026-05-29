@@ -8,15 +8,17 @@
 //! | `POST` | `/api/auth/refresh`  | [`refresh`] |
 //! | `POST` | `/api/auth/sign-out` | [`sign_out`] |
 
-use crate::state::AppState;
 use crate::auth::{
     ACCESS_COOKIE_NAME, CREDENTIAL_PROVIDER, DEFAULT_USER_ROLE, REFRESH_COOKIE_NAME,
     append_access_cookie, append_refresh_cookie, clear_auth_cookies, cookie_value,
     cookie_value_from_parts, issue_access_token, issue_refresh_session, password,
-    session_token::{find_valid_session_by_token, revoke_session, rotate_refresh_session},
+    session_token::{
+        RotateRefreshError, find_valid_session_by_token, revoke_session, rotate_refresh_session,
+    },
     verify_access_token,
 };
 use crate::entities::{account, user};
+use crate::state::AppState;
 use axum::Json;
 use axum::Router;
 use axum::extract::{FromRef, FromRequestParts, State};
@@ -157,6 +159,9 @@ async fn me(State(state): State<AppState>, headers: HeaderMap) -> Response {
     match user_from_access_cookie(&state, &headers).await {
         Ok(user) => Json(user_dto(&user)).into_response(),
         Err(StatusCode::FORBIDDEN) => json_error(StatusCode::FORBIDDEN, "account banned"),
+        Err(StatusCode::INTERNAL_SERVER_ERROR) => {
+            json_error(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        }
         Err(_) => json_error(StatusCode::UNAUTHORIZED, "not authenticated"),
     }
 }
@@ -214,7 +219,6 @@ async fn sign_up(State(state): State<AppState>, Json(body): Json<SignUpBody>) ->
         is_maintainer: Set(false),
         created_at: Set(now.into()),
         updated_at: Set(now.into()),
-        ..Default::default()
     };
     if user_model.insert(&txn).await.is_err() {
         return json_error(StatusCode::INTERNAL_SERVER_ERROR, "database error");
@@ -321,7 +325,12 @@ async fn refresh(State(state): State<AppState>, headers: HeaderMap) -> Response 
 
     let rotated = match rotate_refresh_session(&state.db, &session.id, &user.id).await {
         Ok(r) => r,
-        Err(_) => return json_error(StatusCode::INTERNAL_SERVER_ERROR, "session error"),
+        Err(RotateRefreshError::SessionAlreadyRotated) => {
+            return json_error(StatusCode::UNAUTHORIZED, "invalid refresh token");
+        }
+        Err(RotateRefreshError::Db(_)) => {
+            return json_error(StatusCode::INTERNAL_SERVER_ERROR, "session error");
+        }
     };
 
     let (access_token, expires_in) = match issue_access_token(&state.jwt_secret, &user.id) {
