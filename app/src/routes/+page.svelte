@@ -2,18 +2,8 @@
   import { auth, authLoading } from '$lib/auth';
   import MainApp from './MainApp.svelte';
   import SignIn from './SignIn.svelte';
-  import SignUp from './SignUp.svelte';
-  import { Button } from '$lib/components/ui/button/index.js';
   import * as Card from '$lib/components/ui/card/index.js';
   import { LoaderCircle } from '@lucide/svelte';
-
-  type AuthPanel = 'sign-in' | 'sign-up';
-
-  let panel = $state<AuthPanel>('sign-in');
-
-  function switchPanel(next: AuthPanel) {
-    panel = next;
-  }
 </script>
 
 <svelte:head>
@@ -30,7 +20,7 @@
 {:else if $auth.user}
   <MainApp />
 {:else}
-  <Card.Root class="mx-auto max-w-md">
+  <!-- <Card.Root class="mx-auto max-w-md">
     <Card.Header>
       <div class="flex gap-2">
         <Button
@@ -59,10 +49,10 @@
     </Card.Header>
     <Card.Content>
       {#if panel === 'sign-in'}
-        <SignIn />
       {:else}
-        <SignUp />
+      <SignUp />
       {/if}
-    </Card.Content>
-  </Card.Root>
+      </Card.Content>
+      </Card.Root> -->
+  <SignIn />
 {/if}
