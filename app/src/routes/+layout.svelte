@@ -7,7 +7,7 @@
   import { startAuthRefreshLoop } from '$lib/auth';
   import ms from 'ms';
 
-  const STALE_TIME_MS = ms('15mins'); // by default data will stay fresh for 8 minutes
+  const STALE_TIME_MS = ms('15mins');
 
   const queryClient = new QueryClient({
     defaultOptions: {

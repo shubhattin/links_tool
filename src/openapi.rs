@@ -50,12 +50,6 @@ impl Modify for SecurityAddon {
 
 /// Build the merged OpenAPI spec (used by `gen-openapi` and optional runtime export).
 pub fn openapi() -> utoipa::openapi::OpenApi {
-    use utoipa_axum::router::OpenApiRouter;
-
-    let (_, api) = OpenApiRouter::with_openapi(ApiDoc::openapi())
-        .nest("/api/auth", crate::auth::openapi_router())
-        .merge(crate::redirect::openapi_router())
-        .split_for_parts();
-
+    let (_, api) = crate::app::openapi_router().split_for_parts();
     api
 }
