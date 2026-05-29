@@ -7,11 +7,16 @@
 //! | `POST` | `/api/auth/sign-in`  | [`sign_in`] |
 //! | `POST` | `/api/auth/refresh`  | [`refresh`] |
 //! | `POST` | `/api/auth/sign-out` | [`sign_out`] |
+//! | `GET`  | `/api/auth/google` | OAuth start (Google) |
+//! | `GET`  | `/api/auth/callback/google` | OAuth callback (Google) |
+//! | `GET`  | `/api/auth/github` | OAuth start (GitHub) |
+//! | `GET`  | `/api/auth/callback/github` | OAuth callback (GitHub) |
 
 use crate::auth::{
     ACCESS_COOKIE_NAME, CREDENTIAL_PROVIDER, DEFAULT_USER_ROLE, REFRESH_COOKIE_NAME,
     append_access_cookie, append_refresh_cookie, clear_auth_cookies, cookie_value,
-    cookie_value_from_parts, issue_access_token, issue_refresh_session, password,
+    cookie_value_from_parts, issue_access_token, password,
+    session_issue::{AuthSessionError, apply_session_cookies, issue_auth_session},
     session_token::{
         RotateRefreshError, find_valid_session_by_token, maybe_purge_expired_sessions,
         revoke_session, rotate_refresh_session,
@@ -33,11 +38,6 @@ use std::sync::Arc;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
-
-enum AuthSuccessError {
-    Db,
-    Token,
-}
 
 #[derive(Clone)]
 #[allow(dead_code)]
@@ -135,17 +135,13 @@ async fn user_from_access_cookie(
     Ok(user)
 }
 
-async fn auth_success(state: &AppState, user: &user::Model) -> Result<Response, AuthSuccessError> {
-    let _ = maybe_purge_expired_sessions(&state.db).await;
-    let refresh = issue_refresh_session(&state.db, &user.id)
-        .await
-        .map_err(|_| AuthSuccessError::Db)?;
-    let (access_token, expires_in) =
-        issue_access_token(&state.jwt_secret, &user.id).map_err(|_| AuthSuccessError::Token)?;
-
-    let mut response = Json(SessionResponse { expires_in }).into_response();
-    append_access_cookie(&mut response, &access_token);
-    append_refresh_cookie(&mut response, &refresh.raw_token);
+async fn auth_success(state: &AppState, user: &user::Model) -> Result<Response, AuthSessionError> {
+    let session = issue_auth_session(state, user).await?;
+    let mut response = Json(SessionResponse {
+        expires_in: session.expires_in,
+    })
+    .into_response();
+    apply_session_cookies(&mut response, &session);
     Ok(response)
 }
 
@@ -157,6 +153,7 @@ pub fn openapi_router() -> OpenApiRouter<AppState> {
         .routes(routes!(sign_in))
         .routes(routes!(refresh))
         .routes(routes!(sign_out))
+        .merge(crate::auth::oauth::openapi_router())
 }
 
 /// Auth sub-router (Axum only).

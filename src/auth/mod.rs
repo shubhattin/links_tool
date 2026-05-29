@@ -2,8 +2,10 @@
 
 mod cookies;
 mod jwt;
+mod oauth;
 mod password;
 mod routes;
+mod session_issue;
 mod session_token;
 
 pub use cookies::{

@@ -16,6 +16,11 @@ fn secure_suffix() -> &'static str {
     if cookie_secure() { "; Secure" } else { "" }
 }
 
+/// Exposed for OAuth pending-state cookies (same Secure policy as session cookies).
+pub fn secure_suffix_for_oauth() -> &'static str {
+    secure_suffix()
+}
+
 pub fn append_access_cookie(response: &mut Response, token: &str) {
     let max_age = ACCESS_TOKEN_TTL_SECS;
     let secure = secure_suffix();

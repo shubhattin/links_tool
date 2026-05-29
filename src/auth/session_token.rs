@@ -118,10 +118,10 @@ pub async fn revoke_session(db: &DbPool, session_id: &str) -> Result<(), sea_orm
 /// Delete expired sessions when due — at most once per [`PURGE_MIN_INTERVAL`] per process.
 pub async fn maybe_purge_expired_sessions(db: &DbPool) -> Result<u64, sea_orm::DbErr> {
     let mut throttle = purge_throttle().lock().await;
-    if let Some(last) = throttle.last_purge {
-        if last.elapsed() < PURGE_MIN_INTERVAL {
-            return Ok(0);
-        }
+    if let Some(last) = throttle.last_purge
+        && last.elapsed() < PURGE_MIN_INTERVAL
+    {
+        return Ok(0);
     }
     let deleted = purge_expired_sessions(db).await?;
     throttle.last_purge = Some(Instant::now());
