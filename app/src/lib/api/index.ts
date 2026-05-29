@@ -3,6 +3,8 @@
  */
 import { client as httpClient } from './generated/client.gen';
 import { Api } from './generated/sdk.gen';
+export * from './generated/@tanstack/svelte-query.gen';
+export { client_q } from './query';
 
 export const client = new Api({ client: httpClient, key: 'auth' });
 

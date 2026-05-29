@@ -1,11 +1,5 @@
 import { writable } from 'svelte/store';
-import {
-  client,
-  type SessionResponse,
-  type UserDto,
-  zSessionResponse,
-  zUserDto
-} from '$lib/api';
+import { client, type SessionResponse, type UserDto, zSessionResponse, zUserDto } from '$lib/api';
 
 export type AuthUser = UserDto;
 export type { SessionResponse };
