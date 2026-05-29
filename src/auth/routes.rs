@@ -1,4 +1,14 @@
-use crate::app::AppState;
+//! Auth HTTP routes (mounted at `/api/auth` in [`crate::app::router`]).
+//!
+//! | Method | Path | Handler |
+//! |--------|------|---------|
+//! | `GET`  | `/api/auth/me`       | [`me`] |
+//! | `POST` | `/api/auth/sign-up`  | [`sign_up`] |
+//! | `POST` | `/api/auth/sign-in`  | [`sign_in`] |
+//! | `POST` | `/api/auth/refresh`  | [`refresh`] |
+//! | `POST` | `/api/auth/sign-out` | [`sign_out`] |
+
+use crate::state::AppState;
 use crate::auth::{
     ACCESS_COOKIE_NAME, CREDENTIAL_PROVIDER, DEFAULT_USER_ROLE, REFRESH_COOKIE_NAME,
     append_access_cookie, append_refresh_cookie, clear_auth_cookies, cookie_value,
@@ -25,6 +35,7 @@ enum AuthSuccessError {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct AuthUser {
     pub user_id: String,
 }
@@ -131,15 +142,17 @@ async fn auth_success(state: &AppState, user: &user::Model) -> Result<Response, 
     Ok(response)
 }
 
+/// Auth sub-router; nest at `/api/auth` for full paths in the module docs above.
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/me", get(me))
-        .route("/sign-up", post(sign_up))
-        .route("/sign-in", post(sign_in))
-        .route("/refresh", post(refresh))
-        .route("/sign-out", post(sign_out))
+        .route("/me", get(me)) // GET /api/auth/me
+        .route("/sign-up", post(sign_up)) // POST /api/auth/sign-up
+        .route("/sign-in", post(sign_in)) // POST /api/auth/sign-in
+        .route("/refresh", post(refresh)) // POST /api/auth/refresh
+        .route("/sign-out", post(sign_out)) // POST /api/auth/sign-out
 }
 
+/// `GET /api/auth/me` — current user from access cookie (no JWT in response body).
 async fn me(State(state): State<AppState>, headers: HeaderMap) -> Response {
     match user_from_access_cookie(&state, &headers).await {
         Ok(user) => Json(user_dto(&user)).into_response(),
@@ -148,6 +161,7 @@ async fn me(State(state): State<AppState>, headers: HeaderMap) -> Response {
     }
 }
 
+/// `POST /api/auth/sign-up` — register with email, password, name; sets auth cookies.
 async fn sign_up(State(state): State<AppState>, Json(body): Json<SignUpBody>) -> Response {
     let Some(email) = normalize_email(&body.email) else {
         return json_error(StatusCode::BAD_REQUEST, "invalid email");
@@ -235,6 +249,7 @@ async fn sign_up(State(state): State<AppState>, Json(body): Json<SignUpBody>) ->
     }
 }
 
+/// `POST /api/auth/sign-in` — login; sets auth cookies.
 async fn sign_in(State(state): State<AppState>, Json(body): Json<SignInBody>) -> Response {
     let Some(email) = normalize_email(&body.email) else {
         return json_error(StatusCode::BAD_REQUEST, "invalid email");
@@ -278,6 +293,7 @@ async fn sign_in(State(state): State<AppState>, Json(body): Json<SignInBody>) ->
     }
 }
 
+/// `POST /api/auth/refresh` — rotate refresh session; new access + refresh cookies.
 async fn refresh(State(state): State<AppState>, headers: HeaderMap) -> Response {
     let raw = match cookie_value(&headers, REFRESH_COOKIE_NAME) {
         Some(t) => t,
@@ -319,12 +335,14 @@ async fn refresh(State(state): State<AppState>, headers: HeaderMap) -> Response 
     response
 }
 
+/// `POST /api/auth/sign-out` — revoke session and clear auth cookies.
 async fn sign_out(State(state): State<AppState>, headers: HeaderMap) -> Response {
     let mut response = StatusCode::NO_CONTENT.into_response();
     if let Some(raw) = cookie_value(&headers, REFRESH_COOKIE_NAME)
-        && let Ok(Some(session)) = find_valid_session_by_token(&state.db, &raw).await {
-            let _ = revoke_session(&state.db, &session.id).await;
-        }
+        && let Ok(Some(session)) = find_valid_session_by_token(&state.db, &raw).await
+    {
+        let _ = revoke_session(&state.db, &session.id).await;
+    }
     clear_auth_cookies(&mut response);
     response
 }
