@@ -65,6 +65,10 @@ pub struct UserDto {
     pub name: String,
     pub role: String,
     pub email_verified: bool,
+    pub is_maintainer: bool,
+    pub image: Option<String>,
+    pub username: Option<String>,
+    pub display_username: Option<String>,
 }
 
 /// Cookie-only session response; no JWT in the body.
@@ -150,6 +154,10 @@ pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> Response {
         name: user.name,
         role: user.role,
         email_verified: user.email_verified,
+        is_maintainer: user.is_maintainer,
+        username: user.username,
+        image: user.image,
+        display_username: user.display_username,
     })
     .into_response()
 }
