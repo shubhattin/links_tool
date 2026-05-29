@@ -1,6 +1,6 @@
 //! Find or create user + provider account from OAuth profile.
 
-use crate::auth::DEFAULT_USER_ROLE;
+use crate::auth::{DEFAULT_USER_ROLE, normalize_email};
 use crate::entities::{account, user};
 use crate::state::AppState;
 use chrono::{DateTime, Utc};
@@ -80,7 +80,7 @@ pub async fn find_or_link_user(
         if already_linked.is_some() {
             return Err(LinkError::EmailConflict);
         }
-        insert_account(&state.db, &existing_user.id, &profile).await?;
+        insert_account_in_txn(&state.db, &existing_user.id, &profile).await?;
         return Ok(existing_user);
     }
 
@@ -104,7 +104,14 @@ pub async fn find_or_link_user(
 
     let user_model = user::ActiveModel {
         id: Set(user_id.clone()),
-        name: Set(truncate_name(&profile.name)),
+        name: Set({
+            let trimmed = profile.name.trim();
+            if trimmed.is_empty() {
+                "User".to_string()
+            } else {
+                trimmed.chars().take(255).collect()
+            }
+        }),
         email: Set(email),
         email_verified: Set(profile.email_verified),
         image: Set(profile.image.clone()),
@@ -150,14 +157,6 @@ async fn update_account_tokens(
     Ok(())
 }
 
-async fn insert_account(
-    db: &crate::db::DbPool,
-    user_id: &str,
-    profile: &OAuthProfile,
-) -> Result<(), LinkError> {
-    insert_account_in_txn(db, user_id, profile).await
-}
-
 async fn insert_account_in_txn<C>(
     db: &C,
     user_id: &str,
@@ -184,20 +183,4 @@ where
     };
     account_model.insert(db).await?;
     Ok(())
-}
-
-fn normalize_email(email: &str) -> Option<String> {
-    let email = email.trim().to_lowercase();
-    if email.is_empty() || !email.contains('@') || email.len() > 320 {
-        return None;
-    }
-    Some(email)
-}
-
-fn truncate_name(name: &str) -> String {
-    let trimmed = name.trim();
-    if trimmed.is_empty() {
-        return "User".to_string();
-    }
-    trimmed.chars().take(255).collect()
 }

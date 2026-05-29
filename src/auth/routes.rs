@@ -15,7 +15,7 @@
 use crate::auth::{
     ACCESS_COOKIE_NAME, CREDENTIAL_PROVIDER, DEFAULT_USER_ROLE, REFRESH_COOKIE_NAME,
     append_access_cookie, append_refresh_cookie, clear_auth_cookies, cookie_value,
-    cookie_value_from_parts, issue_access_token, password,
+    issue_access_token, normalize_email, password,
     session_issue::{AuthSessionError, apply_session_cookies, issue_auth_session},
     session_token::{
         RotateRefreshError, find_valid_session_by_token, maybe_purge_expired_sessions,
@@ -79,28 +79,6 @@ pub struct ErrorBody {
     pub error: String,
 }
 
-fn normalize_email(email: &str) -> Option<String> {
-    let email = email.trim().to_lowercase();
-    if email.is_empty() || !email.contains('@') || email.len() > 320 {
-        return None;
-    }
-    Some(email)
-}
-
-fn validate_password(password: &str) -> bool {
-    password.len() >= 8 && password.len() <= 128
-}
-
-fn user_dto(u: &user::Model) -> UserDto {
-    UserDto {
-        id: u.id.clone(),
-        email: u.email.clone(),
-        name: u.name.clone(),
-        role: u.role.clone(),
-        email_verified: u.email_verified,
-    }
-}
-
 fn json_error(status: StatusCode, message: impl Into<String>) -> Response {
     (
         status,
@@ -109,30 +87,6 @@ fn json_error(status: StatusCode, message: impl Into<String>) -> Response {
         }),
     )
         .into_response()
-}
-
-async fn load_user_by_id(
-    db: &crate::db::DbPool,
-    user_id: &str,
-) -> Result<Option<user::Model>, sea_orm::DbErr> {
-    user::Entity::find_by_id(user_id).one(db).await
-}
-
-async fn user_from_access_cookie(
-    state: &AppState,
-    headers: &HeaderMap,
-) -> Result<user::Model, StatusCode> {
-    let token = cookie_value(headers, ACCESS_COOKIE_NAME).ok_or(StatusCode::UNAUTHORIZED)?;
-    let claims =
-        verify_access_token(&state.jwt_secret, &token).map_err(|_| StatusCode::UNAUTHORIZED)?;
-    let user = load_user_by_id(&state.db, &claims.sub)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::UNAUTHORIZED)?;
-    if user.banned {
-        return Err(StatusCode::FORBIDDEN);
-    }
-    Ok(user)
 }
 
 async fn auth_success(state: &AppState, user: &user::Model) -> Result<Response, AuthSessionError> {
@@ -176,14 +130,28 @@ pub fn router() -> Router<AppState> {
     )
 )]
 pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    match user_from_access_cookie(&state, &headers).await {
-        Ok(user) => Json(user_dto(&user)).into_response(),
-        Err(StatusCode::FORBIDDEN) => json_error(StatusCode::FORBIDDEN, "account banned"),
-        Err(StatusCode::INTERNAL_SERVER_ERROR) => {
-            json_error(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        }
-        Err(_) => json_error(StatusCode::UNAUTHORIZED, "not authenticated"),
+    let Some(token) = cookie_value(&headers, ACCESS_COOKIE_NAME) else {
+        return json_error(StatusCode::UNAUTHORIZED, "not authenticated");
+    };
+    let Ok(claims) = verify_access_token(&state.jwt_secret, &token) else {
+        return json_error(StatusCode::UNAUTHORIZED, "not authenticated");
+    };
+    let user = match user::Entity::find_by_id(&claims.sub).one(&state.db).await {
+        Ok(Some(u)) => u,
+        Ok(None) => return json_error(StatusCode::UNAUTHORIZED, "not authenticated"),
+        Err(_) => return json_error(StatusCode::INTERNAL_SERVER_ERROR, "internal server error"),
+    };
+    if user.banned {
+        return json_error(StatusCode::FORBIDDEN, "account banned");
     }
+    Json(UserDto {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        email_verified: user.email_verified,
+    })
+    .into_response()
 }
 
 /// `POST /api/auth/sign-up` — register with email, password, name; sets auth cookies.
@@ -204,7 +172,7 @@ pub async fn sign_up(State(state): State<AppState>, Json(body): Json<SignUpBody>
     let Some(email) = normalize_email(&body.email) else {
         return json_error(StatusCode::BAD_REQUEST, "invalid email");
     };
-    if !validate_password(&body.password) {
+    if body.password.len() < 8 || body.password.len() > 128 {
         return json_error(StatusCode::BAD_REQUEST, "password must be 8-128 characters");
     }
     let name = body.name.trim();
@@ -437,7 +405,7 @@ where
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let app = AppState::from_ref(state);
-        let token = cookie_value_from_parts(parts, ACCESS_COOKIE_NAME).ok_or_else(|| {
+        let token = cookie_value(&parts.headers, ACCESS_COOKIE_NAME).ok_or_else(|| {
             (
                 StatusCode::UNAUTHORIZED,
                 Json(ErrorBody {
