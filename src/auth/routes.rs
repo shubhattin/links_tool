@@ -13,7 +13,8 @@ use crate::auth::{
     append_access_cookie, append_refresh_cookie, clear_auth_cookies, cookie_value,
     cookie_value_from_parts, issue_access_token, issue_refresh_session, password,
     session_token::{
-        RotateRefreshError, find_valid_session_by_token, revoke_session, rotate_refresh_session,
+        RotateRefreshError, find_valid_session_by_token, maybe_purge_expired_sessions,
+        revoke_session, rotate_refresh_session,
     },
     verify_access_token,
 };
@@ -132,6 +133,7 @@ async fn user_from_access_cookie(
 }
 
 async fn auth_success(state: &AppState, user: &user::Model) -> Result<Response, AuthSuccessError> {
+    let _ = maybe_purge_expired_sessions(&state.db).await;
     let refresh = issue_refresh_session(&state.db, &user.id)
         .await
         .map_err(|_| AuthSuccessError::Db)?;
@@ -299,6 +301,7 @@ async fn sign_in(State(state): State<AppState>, Json(body): Json<SignInBody>) ->
 
 /// `POST /api/auth/refresh` — rotate refresh session; new access + refresh cookies.
 async fn refresh(State(state): State<AppState>, headers: HeaderMap) -> Response {
+    let _ = maybe_purge_expired_sessions(&state.db).await;
     let raw = match cookie_value(&headers, REFRESH_COOKIE_NAME) {
         Some(t) => t,
         None => return json_error(StatusCode::UNAUTHORIZED, "missing refresh token"),
