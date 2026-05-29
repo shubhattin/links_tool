@@ -16,7 +16,6 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .if_not_exists()
                     .name("uidx_account_provider_account_id")
                     .table(Account::Table)
                     .col(Account::ProviderId)

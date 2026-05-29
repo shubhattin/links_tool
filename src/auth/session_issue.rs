@@ -26,11 +26,11 @@ pub async fn issue_auth_session(
     user: &user::Model,
 ) -> Result<IssuedSession, AuthSessionError> {
     let _ = maybe_purge_expired_sessions(&state.db).await;
+    let (access_token, expires_in) =
+        issue_access_token(&state.jwt_secret, &user.id).map_err(|_| AuthSessionError::Token)?;
     let refresh = issue_refresh_session(&state.db, &user.id)
         .await
         .map_err(|_| AuthSessionError::Db)?;
-    let (access_token, expires_in) =
-        issue_access_token(&state.jwt_secret, &user.id).map_err(|_| AuthSessionError::Token)?;
     Ok(IssuedSession {
         access_token,
         refresh_raw: refresh.raw_token,

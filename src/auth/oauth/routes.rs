@@ -72,13 +72,17 @@ pub async fn google_start(State(state): State<AppState>) -> Response {
     let env = match load_oauth_env() {
         Ok(e) => e,
         Err(msg) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, msg).into_response();
+            eprintln!("oauth config error: {msg}");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
 
     let start = match start_google_async(&env).await {
         Ok(s) => s,
-        Err(msg) => return (StatusCode::INTERNAL_SERVER_ERROR, msg).into_response(),
+        Err(msg) => {
+            eprintln!("google oauth start error: {msg}");
+            return redirect_frontend_error(&env, "oauth_unavailable");
+        }
     };
 
     let mut response = Redirect::temporary(&start.authorize_url).into_response();
@@ -155,12 +159,18 @@ pub async fn google_callback(
 pub async fn github_start(State(state): State<AppState>) -> Response {
     let env = match load_oauth_env() {
         Ok(e) => e,
-        Err(msg) => return (StatusCode::INTERNAL_SERVER_ERROR, msg).into_response(),
+        Err(msg) => {
+            eprintln!("oauth config error: {msg}");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
     };
 
     let start = match start_github_async(&env).await {
         Ok(s) => s,
-        Err(msg) => return (StatusCode::INTERNAL_SERVER_ERROR, msg).into_response(),
+        Err(msg) => {
+            eprintln!("github oauth start error: {msg}");
+            return redirect_frontend_error(&env, "oauth_unavailable");
+        }
     };
 
     let mut response = Redirect::temporary(&start.authorize_url).into_response();

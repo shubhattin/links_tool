@@ -21,6 +21,7 @@
   <MainApp />
 {:else}
   <Card.Root class="mx-auto max-w-md">
+    <!-- Currently disabled signup via email/password -->
     <!-- <Card.Header>
       <div class="flex gap-2">
         <Button

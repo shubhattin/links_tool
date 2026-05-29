@@ -14,12 +14,18 @@ const PURGE_MIN_INTERVAL: StdDuration = StdDuration::from_secs(5 * 60 * 60);
 
 struct PurgeThrottle {
     last_purge: Option<Instant>,
+    purge_in_progress: bool,
 }
 
 static PURGE_THROTTLE: OnceLock<Mutex<PurgeThrottle>> = OnceLock::new();
 
 fn purge_throttle() -> &'static Mutex<PurgeThrottle> {
-    PURGE_THROTTLE.get_or_init(|| Mutex::new(PurgeThrottle { last_purge: None }))
+    PURGE_THROTTLE.get_or_init(|| {
+        Mutex::new(PurgeThrottle {
+            last_purge: None,
+            purge_in_progress: false,
+        })
+    })
 }
 
 fn hash_token(raw: &str) -> String {
@@ -117,15 +123,30 @@ pub async fn revoke_session(db: &DbPool, session_id: &str) -> Result<(), sea_orm
 
 /// Delete expired sessions when due — at most once per [`PURGE_MIN_INTERVAL`] per process.
 pub async fn maybe_purge_expired_sessions(db: &DbPool) -> Result<u64, sea_orm::DbErr> {
-    let mut throttle = purge_throttle().lock().await;
-    if let Some(last) = throttle.last_purge
-        && last.elapsed() < PURGE_MIN_INTERVAL
     {
-        return Ok(0);
+        let mut throttle = purge_throttle().lock().await;
+        if throttle.purge_in_progress {
+            return Ok(0);
+        }
+        if let Some(last) = throttle.last_purge
+            && last.elapsed() < PURGE_MIN_INTERVAL
+        {
+            return Ok(0);
+        }
+        throttle.purge_in_progress = true;
     }
-    let deleted = purge_expired_sessions(db).await?;
-    throttle.last_purge = Some(Instant::now());
-    Ok(deleted)
+
+    let result = purge_expired_sessions(db).await;
+
+    {
+        let mut throttle = purge_throttle().lock().await;
+        throttle.purge_in_progress = false;
+        if result.is_ok() {
+            throttle.last_purge = Some(Instant::now());
+        }
+    }
+
+    result
 }
 
 async fn purge_expired_sessions(db: &DbPool) -> Result<u64, sea_orm::DbErr> {

@@ -1,6 +1,7 @@
 //! OAuth environment configuration.
 
 use std::sync::OnceLock;
+use std::time::Duration;
 
 static HTTP: OnceLock<reqwest::Client> = OnceLock::new();
 
@@ -8,6 +9,8 @@ pub fn http_client() -> &'static reqwest::Client {
     HTTP.get_or_init(|| {
         reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(30))
             .build()
             .expect("reqwest client")
     })
@@ -39,20 +42,34 @@ impl OAuthEnv {
     }
 }
 
+fn parse_http_url(env_key: &str, raw: &str) -> Result<String, String> {
+    let trimmed = raw.trim();
+    let parsed =
+        reqwest::Url::parse(trimmed).map_err(|e| format!("{env_key} must be a valid URL: {e}"))?;
+    match parsed.scheme() {
+        "http" | "https" => {}
+        scheme => {
+            return Err(format!("{env_key} must use http or https (got {scheme})"));
+        }
+    }
+    Ok(trimmed.trim_end_matches('/').to_string())
+}
+
 pub fn load_oauth_env() -> Result<OAuthEnv, String> {
-    let auth_base_url = std::env::var("AUTH_BASE_URL")
+    let auth_base_raw = std::env::var("AUTH_BASE_URL")
         .or_else(|_| std::env::var("FRONTEND_URL"))
-        .map(|v| v.trim().to_string())
         .map_err(|_| {
             "AUTH_BASE_URL or FRONTEND_URL must be set for OAuth callback URLs".to_string()
         })?;
-    let frontend_url = std::env::var("FRONTEND_URL")
-        .map(|v| v.trim().to_string())
-        .unwrap_or_else(|_| auth_base_url.clone());
+    let auth_base_url = parse_http_url("AUTH_BASE_URL", &auth_base_raw)?;
+    let frontend_url = match std::env::var("FRONTEND_URL") {
+        Ok(v) => parse_http_url("FRONTEND_URL", &v)?,
+        Err(_) => auth_base_url.clone(),
+    };
 
     Ok(OAuthEnv {
-        auth_base_url: auth_base_url.trim_end_matches('/').to_string(),
-        frontend_url: frontend_url.trim_end_matches('/').to_string(),
+        auth_base_url,
+        frontend_url,
         google_client_id: required_env("GOOGLE_CLIENT_ID")?,
         google_client_secret: required_env("GOOGLE_CLIENT_SECRET")?,
         github_client_id: required_env("GITHUB_CLIENT_ID")?,
