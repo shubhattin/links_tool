@@ -35,6 +35,8 @@ sqlx = { version = "0.8", default-features = false, features = [
     "postgres",
     "runtime-tokio-rustls",
 ] }
+utoipa = { version = "5", features = ["axum_extras", "macros"] }
+utoipa-axum = "0.2"
 
 [dev-dependencies]
 colored = "3"
@@ -47,6 +49,10 @@ path = "src/main.rs"
 [[bin]]
 name = "vercel"
 path = "api/vercel.rs"
+
+[[bin]]
+name = "gen-openapi"
+path = "src/bin/gen_openapi.rs"
 
 [workspace]
 members = ["migration"]

@@ -1,36 +1,29 @@
-import { sessionResponseSchema, type SessionResponse } from '$lib/auth';
-import { api } from '@tools/ky';
-import { z } from 'zod';
+import {
+  client,
+  type SessionResponse,
+  type SignInBody,
+  type SignUpBody,
+  zErrorBody,
+  zSessionResponse,
+  zSignInBody,
+  zSignUpBody
+} from '$lib/api';
 
-export const signUpInputSchema = z.object({
-  email: z.email().max(320),
-  password: z.string().min(8).max(128),
-  name: z.string().trim().min(1)
-});
-
-export const signInInputSchema = z.object({
-  email: z.email().max(320),
-  password: z.string().min(1).max(128)
-});
-
-const apiErrorSchema = z.object({
-  error: z.string()
-});
-
-export type SignUpInput = z.infer<typeof signUpInputSchema>;
-export type SignInInput = z.infer<typeof signInInputSchema>;
+export type SignUpInput = SignUpBody;
+export type SignInInput = SignInBody;
+export type { SessionResponse };
 
 export async function apiSignUp(
   body: SignUpInput
 ): Promise<{ ok: true; data: SessionResponse } | { ok: false; error: string }> {
-  const input = signUpInputSchema.safeParse(body);
+  const input = zSignUpBody.safeParse(body);
   if (!input.success) {
     return { ok: false, error: input.error.issues[0]?.message ?? 'invalid input' };
   }
 
   try {
-    const res = await api.post('/api/auth/sign-up', { json: input.data, throwHttpErrors: false });
-    return parseSessionResponse(res);
+    const result = await client.auth.signUp({ body: input.data, throwOnError: false });
+    return parseSessionResult(result);
   } catch (err) {
     return { ok: false, error: networkErrorMessage(err) };
   }
@@ -39,14 +32,14 @@ export async function apiSignUp(
 export async function apiSignIn(
   body: SignInInput
 ): Promise<{ ok: true; data: SessionResponse } | { ok: false; error: string }> {
-  const input = signInInputSchema.safeParse(body);
+  const input = zSignInBody.safeParse(body);
   if (!input.success) {
     return { ok: false, error: input.error.issues[0]?.message ?? 'invalid input' };
   }
 
   try {
-    const res = await api.post('/api/auth/sign-in', { json: input.data, throwHttpErrors: false });
-    return parseSessionResponse(res);
+    const result = await client.auth.signIn({ body: input.data, throwOnError: false });
+    return parseSessionResult(result);
   } catch (err) {
     return { ok: false, error: networkErrorMessage(err) };
   }
@@ -57,21 +50,26 @@ function networkErrorMessage(err: unknown): string {
   return 'network error';
 }
 
-async function parseSessionResponse(
-  res: Response
+type SdkResult = {
+  data?: unknown;
+  error?: unknown;
+  response?: Response;
+};
+
+function parseSessionResult(
+  result: SdkResult
 ): Promise<{ ok: true; data: SessionResponse } | { ok: false; error: string }> {
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const error = apiErrorSchema.safeParse(payload);
-    return {
+  if (result.error || !result.response?.ok) {
+    const error = zErrorBody.safeParse(result.error);
+    return Promise.resolve({
       ok: false,
       error: error.success ? error.data.error : 'request failed'
-    };
+    });
   }
 
-  const data = sessionResponseSchema.safeParse(payload);
+  const data = zSessionResponse.safeParse(result.data);
   if (!data.success) {
-    return { ok: false, error: 'invalid response' };
+    return Promise.resolve({ ok: false, error: 'invalid response' });
   }
-  return { ok: true, data: data.data };
+  return Promise.resolve({ ok: true, data: data.data });
 }

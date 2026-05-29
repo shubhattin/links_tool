@@ -1,21 +1,10 @@
 import { writable } from 'svelte/store';
-import { z } from 'zod';
-import { api, authApi } from '@tools/ky';
+import { client, type SessionResponse, type UserDto, zSessionResponse, zUserDto } from '$lib/api';
 
-export const authUserSchema = z.object({
-  id: z.string(),
-  email: z.string(),
-  name: z.string(),
-  role: z.string(),
-  email_verified: z.boolean()
-});
+export type AuthUser = UserDto;
+export type { SessionResponse };
 
-export const sessionResponseSchema = z.object({
-  expires_in: z.number()
-});
-
-export type AuthUser = z.infer<typeof authUserSchema>;
-export type SessionResponse = z.infer<typeof sessionResponseSchema>;
+export { zUserDto as authUserSchema, zSessionResponse as sessionResponseSchema } from '$lib/api';
 
 type AuthState = {
   user: AuthUser | null;
@@ -57,11 +46,11 @@ export function clearSession() {
 /** Load the current user from the server */
 export async function fetchMe(): Promise<{ ok: true; user: AuthUser } | { ok: false }> {
   try {
-    const res = await authApi.get('/api/auth/me', { throwHttpErrors: false });
-    if (!res.ok) {
+    const result = await client.auth.me({ throwOnError: false });
+    if (result.error || !result.response?.ok) {
       return { ok: false };
     }
-    const parsed = authUserSchema.safeParse(await res.json());
+    const parsed = zUserDto.safeParse(result.data);
     if (!parsed.success) {
       return { ok: false };
     }
@@ -76,19 +65,19 @@ let refreshPromise: Promise<boolean> | null = null;
 
 async function runRefreshSession(): Promise<boolean> {
   try {
-    const res = await api.post('/api/auth/refresh', { throwHttpErrors: false });
-    if (!res.ok) {
+    const result = await client.auth.refresh({ throwOnError: false });
+    if (result.error || !result.response?.ok) {
       clearSession();
       return false;
     }
-    const parsed = sessionResponseSchema.safeParse(await res.json());
+    const parsed = zSessionResponse.safeParse(result.data);
     if (!parsed.success) {
       clearSession();
       return false;
     }
     applySessionExpiry(parsed.data.expires_in);
-    const me = await fetchMe();
-    if (!me.ok) {
+    const meResult = await fetchMe();
+    if (!meResult.ok) {
       clearSession();
       return false;
     }
@@ -111,8 +100,8 @@ export function refreshSession(): Promise<boolean> {
 /** After sign-in/sign-up: cookies are set; load profile from `/me`. */
 export async function completeAuth(session: SessionResponse): Promise<boolean> {
   applySessionExpiry(session.expires_in);
-  const me = await fetchMe();
-  if (!me.ok) {
+  const meResult = await fetchMe();
+  if (!meResult.ok) {
     clearSession();
     return false;
   }
@@ -121,7 +110,7 @@ export async function completeAuth(session: SessionResponse): Promise<boolean> {
 
 export async function signOut() {
   try {
-    await api.post('/api/auth/sign-out', { throwHttpErrors: false });
+    await client.auth.signOut({ throwOnError: false });
   } finally {
     clearSession();
   }
@@ -133,8 +122,8 @@ const ACCESS_TOKEN_TTL_SECS = 15 * 60;
 export async function initAuth() {
   authLoading.set(true);
   try {
-    const me = await fetchMe();
-    if (!me.ok) {
+    const meResult = await fetchMe();
+    if (!meResult.ok) {
       clearSession();
       return;
     }
