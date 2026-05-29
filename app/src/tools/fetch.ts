@@ -2,7 +2,7 @@ type str_dict = {
   [x in string]: string;
 };
 
-type options = Parameters<typeof fetch>[1] & {
+export type options = Parameters<typeof fetch>[1] & {
   json?: any;
   form?: str_dict;
   params?: str_dict;
@@ -16,7 +16,7 @@ type options = Parameters<typeof fetch>[1] & {
  * @param op Options to pass into the `fetch` function
  * @returns `Promise<fetch_response>`
  */
-const AharaNam = (url: string, op: options = {}) => {
+export const AharaNam = (url: string, op: options = {}) => {
   if (!op.headers) op.headers = {};
   if ('params' in op) {
     let params = [] as string[];

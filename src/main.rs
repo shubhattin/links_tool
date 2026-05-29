@@ -16,7 +16,8 @@ async fn main() -> Result<(), DynError> {
         .await
         .map_err(|e| format!("failed to connect to database: {e}"))?;
 
-    let app = links_tool::app::router(db);
+    let state = links_tool::app::build_state(db)?;
+    let app = links_tool::app::router(state);
 
     let host = env::var("LISTEN_ADDR").unwrap_or_else(|_| "0.0.0.0".into());
     let port = env::var("PORT").unwrap_or_else(|_| PORT.to_string());
