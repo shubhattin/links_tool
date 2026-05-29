@@ -6,6 +6,8 @@ use axum::http::Uri;
 use axum::http::header::HeaderValue;
 use axum::response::IntoResponse;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
+use utoipa::OpenApi;
+use utoipa_axum::router::OpenApiRouter;
 
 pub use crate::state::AppState;
 
@@ -44,15 +46,16 @@ fn cors_layer_from_env() -> CorsLayer {
         .unwrap_or_default()
 }
 
+/// Composed OpenAPI-aware router (auth + redirects).
+pub fn openapi_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::with_openapi(crate::openapi::ApiDoc::openapi())
+        .nest("/api/auth", crate::auth::openapi_router())
+        .merge(crate::redirect::openapi_router())
+        .fallback(fallback)
+}
+
 /// Axum router for redirect API and auth (no Vercel-specific layers).
 pub fn router(state: crate::state::AppState) -> Router {
     let cors = cors_layer_from_env();
-    let auth = crate::auth::router().with_state(state.clone());
-
-    Router::new()
-        .nest("/api/auth", auth)
-        .merge(crate::redirect::router())
-        .fallback(fallback)
-        .with_state(state)
-        .layer(cors)
+    openapi_router().with_state(state).layer(cors).into()
 }

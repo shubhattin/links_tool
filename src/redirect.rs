@@ -15,23 +15,43 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::http::header::{HeaderValue, LOCATION};
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
 use serde::Serialize;
+use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
-#[derive(Serialize)]
-pub struct DetailBody<'a> {
-    pub detail: &'a str,
+/// JSON detail body (HTTP 200 for SvelteKit parity errors).
+#[derive(Serialize, ToSchema)]
+pub struct DetailResponse {
+    pub detail: String,
 }
 
-/// Short-link routes mounted at the app root (see [`router`]).
+/// Short-link routes with OpenAPI path registration (mounted at app root).
+pub fn openapi_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(redirect_by_name))
+        .routes(routes!(redirect_by_name_num))
+}
+
+/// Short-link routes mounted at the app root (see [`openapi_router`]).
 pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/{name}/{num}", get(redirect_by_name_num)) // GET /{name}/{num}
-        .route("/{name}", get(redirect_by_name)) // GET /{name}
+    openapi_router().into()
 }
 
 /// `GET /{name}` — short link without numeric substitution (`{0}` must be absent).
-async fn redirect_by_name(
+#[utoipa::path(
+    get,
+    path = "/{name}",
+    operation_id = "redirect.byName",
+    tag = "redirect",
+    params(("name" = String, Path, description = "Short link id")),
+    responses(
+        (status = 302, description = "Redirect to target URL"),
+        (status = 200, description = "Wrong URL, link not found, or disabled", body = DetailResponse),
+        (status = 500, description = "Internal error"),
+    )
+)]
+pub async fn redirect_by_name(
     State(state): State<AppState>,
     Path(name): Path<String>,
 ) -> impl IntoResponse {
@@ -46,7 +66,22 @@ async fn redirect_by_name(
 }
 
 /// `GET /{name}/{num}` — short link with `{0}` replaced by `num` (zero-padded).
-async fn redirect_by_name_num(
+#[utoipa::path(
+    get,
+    path = "/{name}/{num}",
+    operation_id = "redirect.byNameNum",
+    tag = "redirect",
+    params(
+        ("name" = String, Path, description = "Short link id"),
+        ("num" = String, Path, description = "Numeric substitution for `{0}` in template"),
+    ),
+    responses(
+        (status = 302, description = "Redirect to target URL"),
+        (status = 200, description = "Wrong URL, link not found, or disabled", body = DetailResponse),
+        (status = 500, description = "Internal error"),
+    )
+)]
+pub async fn redirect_by_name_num(
     State(state): State<AppState>,
     Path((name, num)): Path<(String, String)>,
 ) -> impl IntoResponse {
@@ -70,7 +105,13 @@ fn internal_server_error() -> impl IntoResponse {
 
 /// JSON error body with HTTP 200 (matches SvelteKit `JSONResponse`).
 fn json_detail(detail: &'static str) -> Response {
-    (StatusCode::OK, Json(DetailBody { detail })).into_response()
+    (
+        StatusCode::OK,
+        Json(DetailResponse {
+            detail: detail.to_string(),
+        }),
+    )
+        .into_response()
 }
 
 /// `GET /{name}` · `GET /{name}/{num}` — invalid path or `{num}` parse failure.

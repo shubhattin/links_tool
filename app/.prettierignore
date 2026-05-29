@@ -7,3 +7,4 @@ bun.lock
 .vercel
 node_modules
 .svelte-kit
+src/lib/api/generated
