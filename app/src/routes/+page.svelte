@@ -20,8 +20,9 @@
 {:else if $auth.user}
   <MainApp />
 {:else}
-  <!-- <Card.Root class="mx-auto max-w-md">
-    <Card.Header>
+  <Card.Root class="mx-auto max-w-md">
+    <!-- Currently disabled signup via email/password -->
+    <!-- <Card.Header>
       <div class="flex gap-2">
         <Button
           variant={panel === 'sign-in' ? 'default' : 'ghost'}
@@ -46,13 +47,13 @@
           Sign up with email and password. No verification step for now.
         {/if}
       </Card.Description>
-    </Card.Header>
+    </Card.Header> -->
     <Card.Content>
-      {#if panel === 'sign-in'}
+      <!-- {#if panel === 'sign-in'}
       {:else}
       <SignUp />
-      {/if}
-      </Card.Content>
-      </Card.Root> -->
-  <SignIn />
+      {/if} -->
+      <SignIn />
+    </Card.Content>
+  </Card.Root>
 {/if}

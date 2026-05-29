@@ -1,4 +1,8 @@
 import {
+  authGithubOptions,
+  authGithubQueryKey,
+  authGoogleOptions,
+  authGoogleQueryKey,
   authMeOptions,
   authMeQueryKey,
   authRefreshMutation,
@@ -29,6 +33,14 @@ export const client_q = {
     },
     signUp: {
       mutationOptions: authSignUpMutation
+    },
+    google: {
+      queryOptions: authGoogleOptions,
+      queryKey: authGoogleQueryKey
+    },
+    github: {
+      queryOptions: authGithubOptions,
+      queryKey: authGithubQueryKey
     }
   },
   redirect: {

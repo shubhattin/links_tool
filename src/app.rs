@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use axum::http::Uri;
 use axum::http::header::HeaderValue;
 use axum::response::IntoResponse;
-use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
+use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 
@@ -39,7 +39,8 @@ fn cors_layer_from_env() -> CorsLayer {
             Some(
                 CorsLayer::new()
                     .allow_origin(AllowOrigin::exact(origin))
-                    .allow_headers(AllowHeaders::any())
+                    .allow_methods(AllowMethods::mirror_request())
+                    .allow_headers(AllowHeaders::mirror_request())
                     .allow_credentials(true),
             )
         })

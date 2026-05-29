@@ -25,7 +25,7 @@ use crate::redirect::DetailResponse;
     )),
     modifiers(&SecurityAddon),
     tags(
-        (name = "auth", description = "Email/password auth (HttpOnly cookies)"),
+        (name = "auth", description = "Email/password and OAuth social auth (HttpOnly cookies)"),
         (name = "redirect", description = "Short-link redirects (SvelteKit parity error bodies)")
     )
 )]

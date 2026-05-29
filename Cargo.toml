@@ -20,6 +20,12 @@ uuid = { version = "1", features = ["v4"] }
 rand = "0.8"
 sha2 = "0.10"
 hex = "0.4"
+oauth2 = { version = "5", default-features = false, features = ["reqwest", "rustls-tls"] }
+openidconnect = { version = "4", default-features = false, features = ["reqwest"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+base64 = "0.22"
+hmac = "0.12"
+urlencoding = "2"
 sea-orm = { version = "1.1", default-features = false, features = [
     "macros",
     "runtime-tokio-rustls",

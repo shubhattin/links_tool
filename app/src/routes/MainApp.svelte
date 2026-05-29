@@ -3,7 +3,7 @@
   import { Badge } from '$lib/components/ui/badge/index.js';
   import * as Card from '$lib/components/ui/card/index.js';
   import { Separator } from '$lib/components/ui/separator/index.js';
-  import { CheckCircle2, XCircle } from '@lucide/svelte';
+  import { CircleCheck, CircleX } from '@lucide/svelte';
 </script>
 
 <Card.Root class="mx-auto max-w-md">
@@ -31,10 +31,10 @@
       >
       <div class="flex items-center gap-2 text-sm">
         {#if $auth.user?.email_verified}
-          <CheckCircle2 class="text-primary size-4" />
+          <CircleCheck class="text-primary size-4" />
           <span>Verified</span>
         {:else}
-          <XCircle class="text-muted-foreground size-4" />
+          <CircleX class="text-muted-foreground size-4" />
           <span class="text-muted-foreground">Not verified yet</span>
         {/if}
       </div>

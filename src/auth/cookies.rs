@@ -1,19 +1,20 @@
 use crate::auth::{ACCESS_TOKEN_TTL_SECS, REFRESH_TOKEN_TTL_SECS};
 use axum::http::header::{COOKIE, HeaderMap, HeaderValue, SET_COOKIE};
-use axum::http::request::Parts;
 use axum::response::Response;
 
 pub const ACCESS_COOKIE_NAME: &str = "access_token";
 pub const REFRESH_COOKIE_NAME: &str = "refresh_token";
 
-fn cookie_secure() -> bool {
-    std::env::var("AUTH_COOKIE_SECURE")
+fn secure_suffix() -> &'static str {
+    let secure = std::env::var("AUTH_COOKIE_SECURE")
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false)
+        .unwrap_or(false);
+    if secure { "; Secure" } else { "" }
 }
 
-fn secure_suffix() -> &'static str {
-    if cookie_secure() { "; Secure" } else { "" }
+/// Exposed for OAuth pending-state cookies (same Secure policy as session cookies).
+pub fn secure_suffix_for_oauth() -> &'static str {
+    secure_suffix()
 }
 
 pub fn append_access_cookie(response: &mut Response, token: &str) {
@@ -72,8 +73,4 @@ pub fn cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
         }
     }
     None
-}
-
-pub fn cookie_value_from_parts(parts: &Parts, name: &str) -> Option<String> {
-    cookie_value(&parts.headers, name)
 }

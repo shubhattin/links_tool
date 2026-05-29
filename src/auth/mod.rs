@@ -2,13 +2,15 @@
 
 mod cookies;
 mod jwt;
+mod oauth;
 mod password;
 mod routes;
+mod session_issue;
 mod session_token;
 
 pub use cookies::{
     ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, append_access_cookie, append_refresh_cookie,
-    clear_auth_cookies, cookie_value, cookie_value_from_parts,
+    clear_auth_cookies, cookie_value,
 };
 pub use jwt::{AccessClaims, issue_access_token, verify_access_token};
 pub use routes::{
@@ -28,3 +30,11 @@ pub const CREDENTIAL_PROVIDER: &str = "credential";
 
 /// Default role for newly registered users.
 pub const DEFAULT_USER_ROLE: &str = "user";
+
+pub(crate) fn normalize_email(email: &str) -> Option<String> {
+    let email = email.trim().to_lowercase();
+    if email.is_empty() || !email.contains('@') || email.len() > 320 {
+        return None;
+    }
+    Some(email)
+}
