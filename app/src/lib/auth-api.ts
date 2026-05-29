@@ -1,28 +1,46 @@
-import type { SessionResponse } from '$lib/auth';
-import { fetch_post } from '@tools/fetch';
+import { sessionResponseSchema, type SessionResponse } from '$lib/auth';
+import { api } from '@tools/ky';
+import { z } from 'zod';
 
-export type SignUpInput = {
-  email: string;
-  password: string;
-  name: string;
-};
+export const signUpInputSchema = z.object({
+  email: z.email().max(320),
+  password: z.string().min(8).max(128),
+  name: z.string().trim().min(1)
+});
 
-export type SignInInput = {
-  email: string;
-  password: string;
-};
+export const signInInputSchema = z.object({
+  email: z.email().max(320),
+  password: z.string().min(1).max(128)
+});
+
+const apiErrorSchema = z.object({
+  error: z.string()
+});
+
+export type SignUpInput = z.infer<typeof signUpInputSchema>;
+export type SignInInput = z.infer<typeof signInInputSchema>;
 
 export async function apiSignUp(
   body: SignUpInput
 ): Promise<{ ok: true; data: SessionResponse } | { ok: false; error: string }> {
-  const res = await fetch_post('/api/auth/sign-up', { json: body, credentials: 'include' });
+  const input = signUpInputSchema.safeParse(body);
+  if (!input.success) {
+    return { ok: false, error: input.error.issues[0]?.message ?? 'invalid input' };
+  }
+
+  const res = await api.post('/api/auth/sign-up', { json: input.data, throwHttpErrors: false });
   return parseSessionResponse(res);
 }
 
 export async function apiSignIn(
   body: SignInInput
 ): Promise<{ ok: true; data: SessionResponse } | { ok: false; error: string }> {
-  const res = await fetch_post('/api/auth/sign-in', { json: body, credentials: 'include' });
+  const input = signInInputSchema.safeParse(body);
+  if (!input.success) {
+    return { ok: false, error: input.error.issues[0]?.message ?? 'invalid input' };
+  }
+
+  const res = await api.post('/api/auth/sign-in', { json: input.data, throwHttpErrors: false });
   return parseSessionResponse(res);
 }
 
@@ -31,8 +49,16 @@ async function parseSessionResponse(
 ): Promise<{ ok: true; data: SessionResponse } | { ok: false; error: string }> {
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const error = typeof payload?.error === 'string' ? payload.error : 'request failed';
-    return { ok: false, error };
+    const error = apiErrorSchema.safeParse(payload);
+    return {
+      ok: false,
+      error: error.success ? error.data.error : 'request failed'
+    };
   }
-  return { ok: true, data: payload as SessionResponse };
+
+  const data = sessionResponseSchema.safeParse(payload);
+  if (!data.success) {
+    return { ok: false, error: 'invalid response' };
+  }
+  return { ok: true, data: data.data };
 }

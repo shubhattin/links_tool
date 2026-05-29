@@ -20,7 +20,7 @@
   )}
   {...restProps}
 >
-  {#snippet children({ checked })}
+  {#snippet children({ checked }: { checked: boolean })}
     <span
       class="absolute right-2 flex items-center justify-center pointer-events-none"
       data-slot="dropdown-menu-radio-item-indicator"

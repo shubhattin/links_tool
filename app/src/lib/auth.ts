@@ -1,17 +1,21 @@
 import { writable } from 'svelte/store';
+import { z } from 'zod';
+import { api, authApi } from '@tools/ky';
 
-export type AuthUser = {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  email_verified: boolean;
-};
+export const authUserSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  name: z.string(),
+  role: z.string(),
+  email_verified: z.boolean()
+});
 
-/** Cookie session metadata only — no JWT in the client. */
-export type SessionResponse = {
-  expires_in: number;
-};
+export const sessionResponseSchema = z.object({
+  expires_in: z.number()
+});
+
+export type AuthUser = z.infer<typeof authUserSchema>;
+export type SessionResponse = z.infer<typeof sessionResponseSchema>;
 
 type AuthState = {
   user: AuthUser | null;
@@ -50,16 +54,19 @@ export function clearSession() {
   auth.set(initial);
 }
 
-/** Load the current user from the server (never decode JWT client-side). */
+/** Load the current user from the server */
 export async function fetchMe(): Promise<{ ok: true; user: AuthUser } | { ok: false }> {
   try {
-    const res = await fetch('/api/auth/me', { credentials: 'include' });
+    const res = await authApi.get('/api/auth/me', { throwHttpErrors: false });
     if (!res.ok) {
       return { ok: false };
     }
-    const user = (await res.json()) as AuthUser;
-    auth.update((s) => ({ ...s, user }));
-    return { ok: true, user };
+    const parsed = authUserSchema.safeParse(await res.json());
+    if (!parsed.success) {
+      return { ok: false };
+    }
+    auth.update((s) => ({ ...s, user: parsed.data }));
+    return { ok: true, user: parsed.data };
   } catch {
     return { ok: false };
   }
@@ -67,16 +74,17 @@ export async function fetchMe(): Promise<{ ok: true; user: AuthUser } | { ok: fa
 
 export async function refreshSession(): Promise<boolean> {
   try {
-    const res = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'include'
-    });
+    const res = await api.post('/api/auth/refresh', { throwHttpErrors: false });
     if (!res.ok) {
       clearSession();
       return false;
     }
-    const data = (await res.json()) as SessionResponse;
-    applySessionExpiry(data.expires_in);
+    const parsed = sessionResponseSchema.safeParse(await res.json());
+    if (!parsed.success) {
+      clearSession();
+      return false;
+    }
+    applySessionExpiry(parsed.data.expires_in);
     const me = await fetchMe();
     if (!me.ok) {
       clearSession();
@@ -102,13 +110,13 @@ export async function completeAuth(session: SessionResponse): Promise<boolean> {
 
 export async function signOut() {
   try {
-    await fetch('/api/auth/sign-out', { method: 'POST', credentials: 'include' });
+    await api.post('/api/auth/sign-out', { throwHttpErrors: false });
   } finally {
     clearSession();
   }
 }
 
-/** Must match backend `ACCESS_TOKEN_TTL_SECS` (scheduling only, not JWT parsing). */
+/** Must match backend `ACCESS_TOKEN_TTL_SECS` */
 const ACCESS_TOKEN_TTL_SECS = 15 * 60;
 
 export async function initAuth() {
