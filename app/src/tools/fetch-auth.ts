@@ -5,13 +5,13 @@ import { AharaNam, type options } from '@tools/fetch';
 export async function fetchAuth(url: string, op: options = {}) {
   op.credentials = 'include';
 
-  let res = await AharaNam(url, op);
+  let res = await AharaNam(url, { ...op });
   if (res.status !== 401) return res;
 
   const refreshed = await refreshSession();
   if (!refreshed) return res;
 
-  return AharaNam(url, op);
+  return AharaNam(url, { ...op });
 }
 
 export const fetch_auth_get = (url: string, op: options = {}) => {

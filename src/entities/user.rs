@@ -35,4 +35,10 @@ impl Related<super::account::Entity> for Entity {
     }
 }
 
+impl Related<super::session::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Session.def()
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}
