@@ -6,6 +6,7 @@ use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 
 use crate::auth::{ErrorBody, SessionResponse, SignInBody, SignUpBody, UserDto};
 use crate::redirect::DetailResponse;
+use crate::routes::links::{LinkDto, LinksListResponse};
 
 /// Root OpenAPI document; operation paths are registered by nested [`utoipa_axum::OpenApiRouter`]s.
 #[derive(OpenApi)]
@@ -13,7 +14,7 @@ use crate::redirect::DetailResponse;
     info(
         title = "Links Tool API",
         version = "0.1.0",
-        description = "Short-link redirects and cookie-based authentication."
+        description = "Short-link redirects, link catalog, and cookie-based authentication."
     ),
     components(schemas(
         SignUpBody,
@@ -22,10 +23,13 @@ use crate::redirect::DetailResponse;
         SessionResponse,
         ErrorBody,
         DetailResponse,
+        LinkDto,
+        LinksListResponse,
     )),
     modifiers(&SecurityAddon),
     tags(
         (name = "auth", description = "Email/password and OAuth social auth (HttpOnly cookies)"),
+        (name = "links", description = "Short-link catalog (authenticated)"),
         (name = "redirect", description = "Short-link redirects (SvelteKit parity error bodies)")
     )
 )]

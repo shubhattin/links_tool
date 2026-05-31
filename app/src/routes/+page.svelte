@@ -1,8 +1,8 @@
 <script lang="ts">
   import { useAuth } from '$lib/use-auth.svelte';
+  import MainApp from '$lib/components/main_app/MainApp.svelte';
 
   const auth = useAuth();
-  import MainApp from './MainApp.svelte';
   import SignIn from './SignIn.svelte';
   import * as Card from '$lib/components/ui/card/index.js';
   import { LoaderCircle } from '@lucide/svelte';

@@ -22,6 +22,7 @@
         "@sveltejs/kit": "^2.61.1",
         "@sveltejs/vite-plugin-svelte": "^7.1.2",
         "@tailwindcss/vite": "^4.3.0",
+        "@tanstack/table-core": "^8.21.3",
         "@types/ms": "^2.1.0",
         "@types/node": "^25.9.1",
         "bits-ui": "^2.16.3",
@@ -279,6 +280,8 @@
     "@tanstack/query-core": ["@tanstack/query-core@5.100.14", "", {}, "sha512-5X41dGpxgeaHISCRW2oYwcSycZeULZzAunaudXT9ov1KOTj9xwt0CH6hbwqP1/z74ZWF7rYFnDpyYH07XFcZew=="],
 
     "@tanstack/svelte-query": ["@tanstack/svelte-query@6.1.33", "", { "dependencies": { "@tanstack/query-core": "5.100.14" }, "peerDependencies": { "svelte": "^5.25.0" } }, "sha512-hdbGeLLOIfkrB+/leytCON+tjpSbkO36OsXxrTkPpwC7p8jK36DaoBRR1FO1Z0jOg/fmfCs26lafzFsWXV5W9w=="],
+
+    "@tanstack/table-core": ["@tanstack/table-core@8.21.3", "", {}, "sha512-ldZXEhOBb8Is7xLs01fR3YEc3DERiz5silj8tnGkFZytt1abEvl/GhUmCE0PMLaMPTa3Jk4HbKmRlHmu+gCftg=="],
 
     "@tybys/wasm-util": ["@tybys/wasm-util@0.10.2", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-RoBvJ2X0wuKlWFIjrwffGw1IqZHKQqzIchKaadZZfnNpsAYp2mM0h36JtPCjNDAHGgYez/15uMBpfGwchhiMgg=="],
 
