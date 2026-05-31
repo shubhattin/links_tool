@@ -20,7 +20,7 @@ export const api = ky.create({
         const pathname = new URL(request.url).pathname;
         if (NO_SESSION_REFRESH_PATHS.some((path) => pathname.endsWith(path))) return;
 
-        const { refreshSession } = await import('$lib/auth');
+        const { refreshSession } = await import('$lib/auth.svelte');
         const refreshed = await refreshSession();
         if (!refreshed) return;
 

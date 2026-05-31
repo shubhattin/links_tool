@@ -2,7 +2,7 @@
   import ThemeToggle from '$lib/components/theme-toggle.svelte';
   import UserMenu from '$lib/components/user-menu.svelte';
   import { Separator } from '$lib/components/ui/separator/index.js';
-  import { auth } from '$lib/auth';
+  import { auth } from '$lib/auth.svelte';
   import { Link } from '@lucide/svelte';
 </script>
 

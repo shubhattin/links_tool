@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { auth } from '$lib/auth';
+  import { auth } from '$lib/auth.svelte';
   import { Badge } from '$lib/components/ui/badge/index.js';
   import * as Card from '$lib/components/ui/card/index.js';
   import { Separator } from '$lib/components/ui/separator/index.js';

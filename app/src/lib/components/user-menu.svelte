@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { auth, signOut } from '$lib/auth';
+  import { auth, signOut } from '$lib/auth.svelte';
   import { Badge } from '$lib/components/ui/badge/index.js';
   import { Button } from '$lib/components/ui/button/index.js';
   import * as Popover from '$lib/components/ui/popover/index.js';

@@ -2,20 +2,10 @@
   import '../app.css';
   import AppHeader from '$lib/components/app-header.svelte';
   import { ModeWatcher } from 'mode-watcher';
-  import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
+  import { QueryClientProvider } from '@tanstack/svelte-query';
+  import { queryClient } from '$lib/query_client';
   import { onMount } from 'svelte';
-  import { initAuth } from '$lib/auth';
-  import ms from 'ms';
-
-  const STALE_TIME_MS = ms('15mins');
-
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: STALE_TIME_MS
-      }
-    }
-  });
+  import { initAuth } from '$lib/auth.svelte';
 
   onMount(() => {
     void initAuth();
