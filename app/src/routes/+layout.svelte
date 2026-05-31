@@ -13,6 +13,7 @@
 <ModeWatcher />
 
 <QueryClientProvider client={queryClient}>
+  <Toaster richColors closeButton position="top-right" />
   <AuthInit>
     <div class="bg-background text-foreground flex min-h-svh flex-col">
       <AppHeader />
@@ -20,7 +21,6 @@
         <slot />
       </main>
     </div>
-    <Toaster richColors closeButton position="top-right" />
   </AuthInit>
   {#if dev}
     <SvelteQueryDevtools />

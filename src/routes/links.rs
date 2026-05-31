@@ -81,7 +81,7 @@ fn json_error(status: StatusCode, message: impl Into<String>) -> Response {
 
 fn validate_id(id: &str) -> Option<Response> {
     let id = id.trim();
-    if id.is_empty() || id.len() > 20 {
+    if id.is_empty() || id.chars().count() > 20 {
         return Some(json_error(
             StatusCode::BAD_REQUEST,
             "id must be 1–20 characters",
@@ -92,7 +92,7 @@ fn validate_id(id: &str) -> Option<Response> {
 
 fn validate_name(name: &Option<String>) -> Option<Response> {
     if let Some(name) = name
-        && name.len() > 30 {
+        && name.chars().count() > 30 {
             return Some(json_error(
                 StatusCode::BAD_REQUEST,
                 "name must be at most 30 characters",
@@ -187,10 +187,17 @@ pub async fn create_link(
 
     match model.insert(&state.db).await {
         Ok(row) => (StatusCode::CREATED, Json(LinkDto::from(row))).into_response(),
-        Err(sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(sqlx_err)))
-            if sqlx_err
-                .as_database_error()
-                .is_some_and(|e| e.is_unique_violation()) =>
+        Err(err)
+            if matches!(
+                err.sql_err(),
+                Some(sea_orm::SqlErr::UniqueConstraintViolation(_))
+            ) || matches!(
+                &err,
+                sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(sqlx_err))
+                    if sqlx_err
+                        .as_database_error()
+                        .is_some_and(|e| e.is_unique_violation())
+            ) =>
         {
             json_error(StatusCode::CONFLICT, "link id already exists")
         }

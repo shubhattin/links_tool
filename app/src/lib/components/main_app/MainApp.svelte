@@ -118,12 +118,13 @@
   }
 
   async function handleRefreshClick() {
-    try {
-      await links_q.refetch();
-      toast.success('Links refreshed');
-    } catch {
+    const result = await links_q.refetch();
+    if (result.isError) {
+      console.error(result.error);
       toast.error('Failed to refresh links');
+      return;
     }
+    toast.success('Links refreshed');
   }
 
   const create_mut = createMutation(
