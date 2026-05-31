@@ -26,7 +26,7 @@ pub fn append_pending_cookie(
     pending: &OAuthPending,
 ) {
     if let Some(value) = encode_pending(secret, pending) {
-        let secure = crate::auth::cookies::secure_suffix_for_oauth();
+        let secure = crate::auth::cookies::secure_suffix();
         let header_value = format!(
             "{COOKIE_NAME}={value}; HttpOnly; Path=/api/auth; Max-Age={MAX_AGE_SECS}; SameSite=Lax{secure}"
         );
@@ -39,7 +39,7 @@ pub fn append_pending_cookie(
 }
 
 pub fn clear_pending_cookie(response: &mut axum::response::Response) {
-    let secure = crate::auth::cookies::secure_suffix_for_oauth();
+    let secure = crate::auth::cookies::secure_suffix();
     let header_value =
         format!("{COOKIE_NAME}=; HttpOnly; Path=/api/auth; Max-Age=0; SameSite=Lax{secure}");
     if let Ok(h) = axum::http::HeaderValue::from_str(&header_value) {

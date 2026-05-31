@@ -4,7 +4,7 @@
   import { ModeWatcher } from 'mode-watcher';
   import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
   import { onMount } from 'svelte';
-  import { startAuthRefreshLoop } from '$lib/auth';
+  import { initAuth } from '$lib/auth';
   import ms from 'ms';
 
   const STALE_TIME_MS = ms('15mins');
@@ -18,7 +18,7 @@
   });
 
   onMount(() => {
-    startAuthRefreshLoop();
+    void initAuth();
   });
 </script>
 

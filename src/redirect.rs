@@ -60,6 +60,7 @@ pub async fn redirect_by_name(
     }
     match crate::db::lookup_link(&state.db, &name).await {
         Ok(Some(row)) => {
+            // Name-only route: template must not use `{0}`.
             if row.link.contains("{0}") {
                 json_detail("Link Not Found")
             } else {
@@ -100,6 +101,7 @@ pub async fn redirect_by_name_num(
     };
     match crate::db::lookup_link(&state.db, &name).await {
         Ok(Some(row)) => {
+            // Numeric route: template must include `{0}`.
             if !row.link.contains("{0}") {
                 json_detail("Link Not Found")
             } else {
@@ -127,6 +129,7 @@ fn build_redirect_response(row: &Link, num: f64) -> Response {
     if !row.enabled {
         return json_detail("Link Disabled");
     }
+    // Substitute `{0}` and return 302 Found.
     let replacement = format_substitution(row.prefix_zeros, num);
     let expanded = row.link.replacen("{0}", &replacement, 1);
     // SvelteKit `redirect(302, link)` — use 302 Found, not Axum `Redirect::temporary` (307).
@@ -137,6 +140,7 @@ fn build_redirect_response(row: &Link, num: f64) -> Response {
 }
 
 fn format_substitution(prefix_zeros: i32, num: f64) -> String {
+    // Match JS Number.prototype.toString() for zero-padding.
     let num_str = if !num.is_finite() {
         String::new()
     } else {

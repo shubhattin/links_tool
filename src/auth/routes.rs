@@ -134,12 +134,14 @@ pub fn router() -> Router<AppState> {
     )
 )]
 pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> Response {
+    // Read and verify access cookie JWT.
     let Some(token) = cookie_value(&headers, ACCESS_COOKIE_NAME) else {
         return json_error(StatusCode::UNAUTHORIZED, "not authenticated");
     };
     let Ok(claims) = verify_access_token(&state.jwt_secret, &token) else {
         return json_error(StatusCode::UNAUTHORIZED, "not authenticated");
     };
+    // Load user row for claims.sub.
     let user = match user::Entity::find_by_id(&claims.sub).one(&state.db).await {
         Ok(Some(u)) => u,
         Ok(None) => return json_error(StatusCode::UNAUTHORIZED, "not authenticated"),

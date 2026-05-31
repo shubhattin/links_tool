@@ -63,37 +63,38 @@ export async function fetchMe(): Promise<{ ok: true; user: AuthUser } | { ok: fa
 
 let refreshPromise: Promise<boolean> | null = null;
 
-async function runRefreshSession(): Promise<boolean> {
-  try {
-    const result = await client.auth.refresh({ throwOnError: false });
-    if (result.error || !result.response?.ok) {
-      clearSession();
-      return false;
-    }
-    const parsed = zSessionResponse.safeParse(result.data);
-    if (!parsed.success) {
-      clearSession();
-      return false;
-    }
-    applySessionExpiry(parsed.data.expires_in);
-    const meResult = await fetchMe();
-    if (!meResult.ok) {
-      clearSession();
-      return false;
-    }
-    return true;
-  } catch {
-    clearSession();
-    return false;
-  }
-}
-
 export function refreshSession(): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
 
-  refreshPromise = runRefreshSession().finally(() => {
+  refreshPromise = (async () => {
+    try {
+      // Rotate refresh cookie, then reload profile from /me.
+      const result = await client.auth.refresh({ throwOnError: false });
+      if (result.error || !result.response?.ok) {
+        clearSession();
+        return false;
+      }
+      const parsed = zSessionResponse.safeParse(result.data);
+      if (!parsed.success) {
+        clearSession();
+        return false;
+      }
+      applySessionExpiry(parsed.data.expires_in);
+      // Confirm session and populate auth store.
+      const meResult = await fetchMe();
+      if (!meResult.ok) {
+        clearSession();
+        return false;
+      }
+      return true;
+    } catch {
+      clearSession();
+      return false;
+    }
+  })().finally(() => {
     refreshPromise = null;
   });
+
   return refreshPromise;
 }
 
@@ -119,6 +120,7 @@ export async function signOut() {
 /** Must match backend `ACCESS_TOKEN_TTL_SECS` */
 const ACCESS_TOKEN_TTL_SECS = 15 * 60;
 
+/** Bootstrap session on app load: /me, then schedule refresh from access TTL. */
 export async function initAuth() {
   authLoading.set(true);
   try {
@@ -131,8 +133,4 @@ export async function initAuth() {
   } finally {
     authLoading.set(false);
   }
-}
-
-export function startAuthRefreshLoop() {
-  void initAuth();
 }

@@ -56,7 +56,20 @@ pub async fn find_or_link_user(
         if user.banned {
             return Err(LinkError::Banned);
         }
-        update_account_tokens(&state.db, existing.id, &profile).await?;
+        // Refresh stored OAuth tokens on repeat login.
+        let now = Utc::now();
+        let mut active: account::ActiveModel = account::Entity::find_by_id(existing.id)
+            .one(&state.db)
+            .await?
+            .ok_or_else(|| LinkError::Db(sea_orm::DbErr::Custom("account missing".into())))?
+            .into();
+        active.access_token = Set(profile.access_token.clone());
+        active.refresh_token = Set(profile.refresh_token.clone());
+        active.id_token = Set(profile.id_token.clone());
+        active.access_token_expires_at = Set(profile.access_token_expires_at);
+        active.scope = Set(profile.scope.clone());
+        active.updated_at = Set(now.into());
+        active.update(&state.db).await?;
         return Ok(user);
     }
 
@@ -134,27 +147,6 @@ pub async fn find_or_link_user(
         .one(&state.db)
         .await?
         .ok_or_else(|| LinkError::Db(sea_orm::DbErr::Custom("user missing after insert".into())))
-}
-
-async fn update_account_tokens(
-    db: &crate::db::DbPool,
-    account_row_id: String,
-    profile: &OAuthProfile,
-) -> Result<(), LinkError> {
-    let now = Utc::now();
-    let mut active: account::ActiveModel = account::Entity::find_by_id(account_row_id)
-        .one(db)
-        .await?
-        .ok_or_else(|| LinkError::Db(sea_orm::DbErr::Custom("account missing".into())))?
-        .into();
-    active.access_token = Set(profile.access_token.clone());
-    active.refresh_token = Set(profile.refresh_token.clone());
-    active.id_token = Set(profile.id_token.clone());
-    active.access_token_expires_at = Set(profile.access_token_expires_at);
-    active.scope = Set(profile.scope.clone());
-    active.updated_at = Set(now.into());
-    active.update(db).await?;
-    Ok(())
 }
 
 async fn insert_account_in_txn<C>(

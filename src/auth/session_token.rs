@@ -123,6 +123,7 @@ pub async fn revoke_session(db: &DbPool, session_id: &str) -> Result<(), sea_orm
 
 /// Delete expired sessions when due — at most once per [`PURGE_MIN_INTERVAL`] per process.
 pub async fn maybe_purge_expired_sessions(db: &DbPool) -> Result<u64, sea_orm::DbErr> {
+    // Claim purge slot; do not hold the lock across await.
     {
         let mut throttle = purge_throttle().lock().await;
         if throttle.purge_in_progress {
@@ -138,6 +139,7 @@ pub async fn maybe_purge_expired_sessions(db: &DbPool) -> Result<u64, sea_orm::D
 
     let result = purge_expired_sessions(db).await;
 
+    // Record completion and release in-progress flag.
     {
         let mut throttle = purge_throttle().lock().await;
         throttle.purge_in_progress = false;
