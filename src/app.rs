@@ -47,10 +47,11 @@ fn cors_layer_from_env() -> CorsLayer {
         .unwrap_or_default()
 }
 
-/// Composed OpenAPI-aware router (auth + redirects).
+/// Composed OpenAPI-aware router (auth + links + redirects).
 pub fn openapi_router() -> OpenApiRouter<AppState> {
     OpenApiRouter::with_openapi(crate::openapi::ApiDoc::openapi())
         .nest("/api/auth", crate::auth::openapi_router())
+        .nest("/api/links", crate::routes::links::openapi_router())
         .merge(crate::redirect::openapi_router())
         .fallback(fallback)
 }
