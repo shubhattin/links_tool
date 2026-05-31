@@ -2,7 +2,9 @@
   import ThemeToggle from '$lib/components/theme-toggle.svelte';
   import UserMenu from '$lib/components/user-menu.svelte';
   import { Separator } from '$lib/components/ui/separator/index.js';
-  import { auth } from '$lib/auth.svelte';
+  import { useAuth } from '$lib/use-auth.svelte';
+
+  const auth = useAuth();
   import { Link } from '@lucide/svelte';
 </script>
 
@@ -18,7 +20,7 @@
     <div class="flex-1"></div>
 
     <nav class="flex items-center gap-2">
-      {#if $auth.user}
+      {#if auth.data}
         <UserMenu />
       {/if}
       <Separator orientation="vertical" class="mx-1 h-6" />

@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { apiSignUp } from '$lib/auth-api';
-  import { completeAuth } from '$lib/auth.svelte';
+  import { apiSignUp, completeAuth } from '$lib/auth';
   import { Button } from '$lib/components/ui/button/index.js';
   import { Input } from '$lib/components/ui/input/index.js';
   import { Label } from '$lib/components/ui/label/index.js';

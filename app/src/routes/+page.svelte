@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { auth, authLoading } from '$lib/auth.svelte';
+  import { useAuth } from '$lib/use-auth.svelte';
+
+  const auth = useAuth();
   import MainApp from './MainApp.svelte';
   import SignIn from './SignIn.svelte';
   import * as Card from '$lib/components/ui/card/index.js';
@@ -10,14 +12,14 @@
   <title>Links Tool</title>
 </svelte:head>
 
-{#if $authLoading}
+{#if auth.isPending}
   <Card.Root class="mx-auto max-w-md">
     <Card.Content class="flex flex-col items-center justify-center gap-3 py-16">
       <LoaderCircle class="text-muted-foreground size-8 animate-spin" aria-hidden="true" />
       <p class="text-muted-foreground text-sm" role="status">Checking session…</p>
     </Card.Content>
   </Card.Root>
-{:else if $auth.user}
+{:else if auth.data}
   <MainApp />
 {:else}
   <Card.Root class="mx-auto max-w-md">

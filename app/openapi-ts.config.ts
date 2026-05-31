@@ -17,12 +17,6 @@ export default defineConfig({
       }
     },
     {
-      name: '@tanstack/svelte-query',
-      queryOptions: true,
-      queryKeys: true,
-      mutationOptions: true
-    },
-    {
       name: 'zod',
       compatibilityVersion: 4
     },

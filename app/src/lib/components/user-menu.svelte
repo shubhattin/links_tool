@@ -1,17 +1,20 @@
 <script lang="ts">
-  import { auth, signOut } from '$lib/auth.svelte';
+  import { signOut } from '$lib/auth';
+  import { useAuth } from '$lib/use-auth.svelte';
   import { Badge } from '$lib/components/ui/badge/index.js';
   import { Button } from '$lib/components/ui/button/index.js';
   import * as Popover from '$lib/components/ui/popover/index.js';
   import { Separator } from '$lib/components/ui/separator/index.js';
   import { CheckCircle2, User, XCircle } from '@lucide/svelte';
 
+  const auth = useAuth();
+
   async function handleSignOut() {
     await signOut();
   }
 </script>
 
-{#if $auth.user}
+{#if auth.data}
   <Popover.Root>
     <Popover.Trigger>
       {#snippet child({ props })}
@@ -23,23 +26,23 @@
     <Popover.Content align="end" class="w-72 gap-3 p-4">
       <div class="flex flex-col gap-1">
         <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Name</p>
-        <p class="font-medium leading-none">{$auth.user.name}</p>
+        <p class="font-medium leading-none">{auth.data.name}</p>
       </div>
       <Separator />
       <div class="flex flex-col gap-1">
         <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Email</p>
-        <p class="text-sm break-all">{$auth.user.email}</p>
+        <p class="text-sm break-all">{auth.data.email}</p>
       </div>
       <div class="flex flex-col gap-1">
         <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Role</p>
-        <Badge variant="secondary" class="w-fit capitalize">{$auth.user.role}</Badge>
+        <Badge variant="secondary" class="w-fit capitalize">{auth.data.role}</Badge>
       </div>
       <div class="flex flex-col gap-1">
         <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">
           Email verified
         </p>
         <div class="flex items-center gap-2 text-sm">
-          {#if $auth.user.email_verified}
+          {#if auth.data.email_verified}
             <CheckCircle2 class="text-primary size-4" />
             <span>Verified</span>
           {:else}
