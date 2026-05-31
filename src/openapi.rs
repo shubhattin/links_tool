@@ -6,7 +6,7 @@ use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 
 use crate::auth::{ErrorBody, SessionResponse, SignInBody, SignUpBody, UserDto};
 use crate::redirect::DetailResponse;
-use crate::routes::links::{LinkDto, LinksListResponse};
+use crate::routes::links::{CreateLinkBody, LinkDto, LinksListResponse, UpdateLinkBody};
 
 /// Root OpenAPI document; operation paths are registered by nested [`utoipa_axum::OpenApiRouter`]s.
 #[derive(OpenApi)]
@@ -25,6 +25,8 @@ use crate::routes::links::{LinkDto, LinksListResponse};
         DetailResponse,
         LinkDto,
         LinksListResponse,
+        CreateLinkBody,
+        UpdateLinkBody,
     )),
     modifiers(&SecurityAddon),
     tags(
