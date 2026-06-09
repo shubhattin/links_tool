@@ -13,6 +13,13 @@ import {
 import { queryClient } from './query_client';
 
 export type AuthUser = UserDto;
+
+/** Must match backend `ADMIN_ROLE` */
+export const ADMIN_ROLE = 'admin';
+
+export function isAdminUser(user: AuthUser | null | undefined): user is AuthUser {
+  return user?.role === ADMIN_ROLE;
+}
 export type SignUpInput = SignUpBody;
 export type SignInInput = SignInBody;
 export type { SessionResponse };
