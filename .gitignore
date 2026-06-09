@@ -10,3 +10,4 @@ export_out/
 
 # OpenAPI intermediate artifact (regenerated locally / in CI)
 app/openapi/schema.json
+.env*.local
