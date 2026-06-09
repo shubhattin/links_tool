@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { isAdminUser } from '$lib/auth';
   import { useAuth } from '$lib/use-auth.svelte';
   import MainApp from '$lib/components/main_app/MainApp.svelte';
   import SignIn from './SignIn.svelte';
@@ -19,8 +20,17 @@
       <p class="text-muted-foreground text-sm" role="status">Checking session…</p>
     </Card.Content>
   </Card.Root>
-{:else if auth.data}
+{:else if isAdminUser(auth.data)}
   <MainApp />
+{:else if auth.data}
+  <Card.Root class="mx-auto max-w-md">
+    <Card.Header>
+      <Card.Title>Access denied</Card.Title>
+      <Card.Description>
+        Your account does not have permission to manage links. An admin role is required.
+      </Card.Description>
+    </Card.Header>
+  </Card.Root>
 {:else}
   <Card.Root class="mx-auto max-w-md">
     <!-- Currently disabled signup via email/password -->

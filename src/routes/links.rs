@@ -92,12 +92,13 @@ fn validate_id(id: &str) -> Option<Response> {
 
 fn validate_name(name: &Option<String>) -> Option<Response> {
     if let Some(name) = name
-        && name.chars().count() > 30 {
-            return Some(json_error(
-                StatusCode::BAD_REQUEST,
-                "name must be at most 30 characters",
-            ));
-        }
+        && name.chars().count() > 30
+    {
+        return Some(json_error(
+            StatusCode::BAD_REQUEST,
+            "name must be at most 30 characters",
+        ));
+    }
     None
 }
 

@@ -1,5 +1,6 @@
 //! Email/password auth with Argon2id, JWT access tokens, and rotating refresh cookies.
 
+mod admin;
 mod cookies;
 mod jwt;
 mod oauth;
@@ -8,6 +9,7 @@ mod routes;
 mod session_issue;
 mod session_token;
 
+pub use admin::require_admin;
 pub use cookies::{
     ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, append_access_cookie, append_refresh_cookie,
     clear_auth_cookies, cookie_value,
@@ -30,6 +32,9 @@ pub const CREDENTIAL_PROVIDER: &str = "credential";
 
 /// Default role for newly registered users.
 pub const DEFAULT_USER_ROLE: &str = "user";
+
+/// Role required for link management API and admin UI.
+pub const ADMIN_ROLE: &str = "admin";
 
 pub(crate) fn normalize_email(email: &str) -> Option<String> {
     let email = email.trim().to_lowercase();
