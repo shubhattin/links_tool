@@ -31,6 +31,9 @@ export const AUTH_QUERY_KEY = ['auth', 'me'] as const;
 /** Must match backend `ACCESS_TOKEN_TTL_SECS` */
 const ACCESS_TOKEN_TTL_SECS = 15 * 60;
 
+/** One retry after `/refresh` when the access cookie expired but refresh is still valid. */
+const AUTH_ME_RETRY_LIMIT = 1;
+
 type AuthSessionResult = { ok: true; data: SessionResponse } | { ok: false; error: string };
 
 type SdkResult = {
@@ -39,20 +42,62 @@ type SdkResult = {
   response?: Response;
 };
 
+/** Thrown on 401 from `/me` so TanStack Query can retry once after token refresh. */
+class AuthSessionExpiredError extends Error {
+  constructor() {
+    super('session expired');
+    this.name = 'AuthSessionExpiredError';
+  }
+}
+
+/** Non-auth failures loading the current user (network, 5xx, invalid payload). */
+export class AuthFetchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthFetchError';
+  }
+}
+
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-let refreshPromise: Promise<boolean> | null = null;
+let tokenRefreshPromise: Promise<boolean> | null = null;
+
+async function fetchMeResponse(): Promise<AuthUser> {
+  const result = await client.auth.me({ throwOnError: false });
+
+  if (result.response?.status === 401) {
+    throw new AuthSessionExpiredError();
+  }
+  if (result.error || !result.response?.ok) {
+    throw new AuthFetchError('failed to load session');
+  }
+
+  const parsed = zUserDto.safeParse(result.data);
+  if (!parsed.success) {
+    throw new AuthFetchError('invalid session response');
+  }
+  return parsed.data;
+}
 
 export async function fetchAuthUser(): Promise<AuthUser | null> {
-  const result = await client.auth.me({ throwOnError: false });
-  if (result.error || !result.response?.ok) return null;
-  const parsed = zUserDto.safeParse(result.data);
-  return parsed.success ? parsed.data : null;
+  try {
+    return await fetchMeResponse();
+  } catch (error) {
+    if (error instanceof AuthSessionExpiredError) {
+      const refreshed = await refreshSessionTokens();
+      if (!refreshed) return null;
+      // TanStack Query retries once; the next call should succeed with the new access cookie.
+      throw error;
+    }
+    throw error;
+  }
 }
 
 export const authQueryOptions = () => ({
   queryKey: AUTH_QUERY_KEY,
   queryFn: fetchAuthUser,
-  retry: false
+  retry: (failureCount: number, error: Error) =>
+    failureCount < AUTH_ME_RETRY_LIMIT && error instanceof AuthSessionExpiredError,
+  retryDelay: 0
 });
 
 function scheduleRefresh(expiresInSec: number) {
@@ -76,26 +121,43 @@ export function clearSession() {
 async function refetchAuthUser(): Promise<AuthUser | null> {
   return queryClient.fetchQuery({
     queryKey: AUTH_QUERY_KEY,
-    queryFn: fetchAuthUser
+    queryFn: fetchAuthUser,
+    retry: authQueryOptions().retry,
+    retryDelay: 0
   });
 }
 
-export function refreshSession(): Promise<boolean> {
-  if (refreshPromise) return refreshPromise;
+/** Refresh cookies only; does not refetch `/me`. */
+export async function refreshSessionTokens(): Promise<boolean> {
+  if (tokenRefreshPromise) return tokenRefreshPromise;
 
-  refreshPromise = (async () => {
+  tokenRefreshPromise = (async () => {
     try {
       const result = await client.auth.refresh({ throwOnError: false });
-      if (result.error || !result.response?.ok) {
-        clearSession();
-        return false;
-      }
+      if (result.error || !result.response?.ok) return false;
+
       const parsed = zSessionResponse.safeParse(result.data);
-      if (!parsed.success) {
-        clearSession();
-        return false;
-      }
+      if (!parsed.success) return false;
+
       applySessionExpiry(parsed.data.expires_in);
+      return true;
+    } catch {
+      return false;
+    }
+  })().finally(() => {
+    tokenRefreshPromise = null;
+  });
+
+  return tokenRefreshPromise;
+}
+
+export function refreshSession(): Promise<boolean> {
+  return refreshSessionTokens().then(async (ok) => {
+    if (!ok) {
+      clearSession();
+      return false;
+    }
+    try {
       const user = await refetchAuthUser();
       if (!user) {
         clearSession();
@@ -106,22 +168,23 @@ export function refreshSession(): Promise<boolean> {
       clearSession();
       return false;
     }
-  })().finally(() => {
-    refreshPromise = null;
   });
-
-  return refreshPromise;
 }
 
 /** After sign-in/sign-up: cookies are set; load profile from `/me`. */
 export async function completeAuth(session: SessionResponse): Promise<boolean> {
   applySessionExpiry(session.expires_in);
-  const user = await refetchAuthUser();
-  if (!user) {
+  try {
+    const user = await refetchAuthUser();
+    if (!user) {
+      clearSession();
+      return false;
+    }
+    return true;
+  } catch {
     clearSession();
     return false;
   }
-  return true;
 }
 
 export async function signOut() {

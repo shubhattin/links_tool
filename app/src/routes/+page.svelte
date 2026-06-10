@@ -4,6 +4,7 @@
   import MainApp from '$lib/components/main_app/MainApp.svelte';
   import SignIn from './SignIn.svelte';
   import * as Card from '$lib/components/ui/card/index.js';
+  import { Button } from '$lib/components/ui/button/index.js';
   import { LoaderCircle } from '@lucide/svelte';
 
   const auth = useAuth();
@@ -13,11 +14,23 @@
   <title>Links Tool</title>
 </svelte:head>
 
-{#if auth.isPending}
+{#if auth.isPending || auth.isFetching}
   <Card.Root class="mx-auto max-w-md">
     <Card.Content class="flex flex-col items-center justify-center gap-3 py-16">
       <LoaderCircle class="text-muted-foreground size-8 animate-spin" aria-hidden="true" />
       <p class="text-muted-foreground text-sm" role="status">Checking session…</p>
+    </Card.Content>
+  </Card.Root>
+{:else if auth.isError}
+  <Card.Root class="mx-auto max-w-md">
+    <Card.Header>
+      <Card.Title>Could not load session</Card.Title>
+      <Card.Description>
+        {auth.error?.message ?? 'Something went wrong while checking your session.'}
+      </Card.Description>
+    </Card.Header>
+    <Card.Content>
+      <Button type="button" onclick={() => auth.refetch()}>Try again</Button>
     </Card.Content>
   </Card.Root>
 {:else if isAdminUser(auth.data)}

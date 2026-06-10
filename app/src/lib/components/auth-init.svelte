@@ -13,9 +13,14 @@
   let proactiveRefreshBootstrapped = false;
 
   $effect(() => {
-    if (proactiveRefreshBootstrapped || auth.isPending) return;
+    if (proactiveRefreshBootstrapped || auth.isPending || auth.isFetching) return;
     proactiveRefreshBootstrapped = true;
     if (auth.data) scheduleProactiveRefresh();
+  });
+
+  $effect(() => {
+    if (!auth.isError) return;
+    proactiveRefreshBootstrapped = false;
   });
 </script>
 

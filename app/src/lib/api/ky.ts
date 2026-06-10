@@ -20,8 +20,8 @@ export const api = ky.create({
         const pathname = new URL(request.url).pathname;
         if (NO_SESSION_REFRESH_PATHS.some((path) => pathname.endsWith(path))) return;
 
-        const { refreshSession } = await import('$lib/auth');
-        const refreshed = await refreshSession();
+        const { refreshSessionTokens } = await import('$lib/auth');
+        const refreshed = await refreshSessionTokens();
         if (!refreshed) return;
 
         return ky.retry({ code: 'SESSION_REFRESHED' });
