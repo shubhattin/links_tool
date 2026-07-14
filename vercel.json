@@ -9,19 +9,12 @@
       "framework": "sveltekit",
       "installCommand": "bun install",
       "buildCommand": "bun run build",
-      "devCommand": "bun run dev",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "backend",
-          "format": "url",
-          "env": "BACKEND_INTERNAL_URL"
-        }
-      ]
+      "devCommand": "bun run dev -- --host 0.0.0.0"
     },
     "backend": {
       "root": "./",
-      "entrypoint": "api/vercel.rs"
+      "entrypoint": "src/main.rs",
+      "devCommand": "cargo run --bin main"
     }
   },
   "rewrites": [
