@@ -3,44 +3,21 @@
   "regions": [
     "sin1"
   ],
-  "services": {
-    "frontend": {
-      "root": "app/",
-      "framework": "sveltekit",
-      "installCommand": "bun install",
-      "buildCommand": "bun run build",
-      "devCommand": "bun run dev -- --host 0.0.0.0"
-    },
-    "backend": {
-      "root": "./",
-      "entrypoint": "src/main.rs",
-      "devCommand": "cargo run --bin main"
-    }
-  },
+  "installCommand": "cd app && bun install",
+  "buildCommand": "cd app && bun run build",
+  "outputDirectory": "app/.vercel/output/static",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": {
-        "service": "backend"
-      }
-    },
-    {
       "source": "/:name/:num",
-      "destination": {
-        "service": "backend"
-      }
+      "destination": "/api/vercel"
     },
     {
       "source": "/:name",
-      "destination": {
-        "service": "backend"
-      }
+      "destination": "/api/vercel"
     },
     {
-      "source": "/(.*)",
-      "destination": {
-        "service": "frontend"
-      }
+      "source": "/api/:path*",
+      "destination": "/api/vercel"
     }
   ]
 }
