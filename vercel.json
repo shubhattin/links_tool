@@ -1,12 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["sin1"],
+  "regions": [
+    "sin1"
+  ],
   "services": {
     "frontend": {
       "root": "app/",
       "framework": "sveltekit",
       "installCommand": "bun install",
       "buildCommand": "bun run build",
+      "devCommand": "bun run dev",
       "bindings": [
         {
           "type": "service",
@@ -17,25 +20,34 @@
       ]
     },
     "backend": {
-      "root": "./"
+      "root": "./",
+      "entrypoint": "api/vercel.rs"
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": { "service": "backend" }
+      "destination": {
+        "service": "backend"
+      }
     },
     {
       "source": "/:name/:num",
-      "destination": { "service": "backend" }
+      "destination": {
+        "service": "backend"
+      }
     },
     {
       "source": "/:name",
-      "destination": { "service": "backend" }
+      "destination": {
+        "service": "backend"
+      }
     },
     {
       "source": "/(.*)",
-      "destination": { "service": "frontend" }
+      "destination": {
+        "service": "frontend"
+      }
     }
   ]
 }
