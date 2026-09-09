@@ -7,7 +7,7 @@
 //! | `PATCH` | `/api/links/{id}` | [`update_link`] |
 //! | `DELETE` | `/api/links/{id}` | [`delete_link`] |
 
-use crate::auth::{AuthUser, ErrorBody};
+use crate::auth::ErrorBody;
 use crate::db::LookupError;
 use crate::entities::links;
 pub use crate::entities::links::Model as Link;
@@ -132,7 +132,7 @@ pub fn router() -> Router<AppState> {
         (status = 500, description = "Internal error"),
     )
 )]
-pub async fn list_links(State(state): State<AppState>, _user: AuthUser) -> impl IntoResponse {
+pub async fn list_links(State(state): State<AppState>) -> impl IntoResponse {
     match links::Entity::find()
         .all(&state.db)
         .await
@@ -164,7 +164,6 @@ pub async fn list_links(State(state): State<AppState>, _user: AuthUser) -> impl 
 )]
 pub async fn create_link(
     State(state): State<AppState>,
-    _user: AuthUser,
     Json(body): Json<CreateLinkBody>,
 ) -> impl IntoResponse {
     let id = body.id.trim().to_string();
@@ -225,9 +224,11 @@ pub async fn create_link(
 )]
 pub async fn update_link(
     State(state): State<AppState>,
-    _user: AuthUser,
     Path(id): Path<String>,
     Json(body): Json<UpdateLinkBody>,
+    // ^ here if we need we can also add _user: AuthUser to the parameters to get the user id
+    // as for AuthUser the impl FromRequestParts<AppState> is defined in auth/routes.rs
+    // which inturn uses context of the extensions provided by the insert_auth_info middleware
 ) -> impl IntoResponse {
     if let Some(r) = validate_link(&body.link) {
         return r;
@@ -271,7 +272,6 @@ pub async fn update_link(
 )]
 pub async fn delete_link(
     State(state): State<AppState>,
-    _user: AuthUser,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
     let result = match links::Entity::delete_by_id(id).exec(&state.db).await {

@@ -27,7 +27,7 @@ use crate::entities::{account, user};
 use crate::state::AppState;
 use axum::Json;
 use axum::Router;
-use axum::extract::{FromRef, FromRequestParts, State};
+use axum::extract::{FromRequestParts, State};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -39,10 +39,12 @@ use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
+/// Authenticated caller, inserted by [`crate::auth::insert_auth_info`] into request extensions.
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct AuthUser {
     pub user_id: String,
+    pub role: String,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -409,32 +411,17 @@ pub async fn sign_out(State(state): State<AppState>, headers: HeaderMap) -> Resp
 impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,
-    AppState: FromRef<S>,
 {
     type Rejection = (StatusCode, Json<ErrorBody>);
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let app = AppState::from_ref(state);
-        let token = cookie_value(&parts.headers, ACCESS_COOKIE_NAME).ok_or_else(|| {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        parts.extensions.get::<AuthUser>().cloned().ok_or_else(|| {
             (
                 StatusCode::UNAUTHORIZED,
                 Json(ErrorBody {
                     error: "not authenticated".into(),
                 }),
             )
-        })?;
-
-        let claims = verify_access_token(&app.jwt_secret, &token).map_err(|_| {
-            (
-                StatusCode::UNAUTHORIZED,
-                Json(ErrorBody {
-                    error: "invalid token".into(),
-                }),
-            )
-        })?;
-
-        Ok(AuthUser {
-            user_id: claims.sub,
         })
     }
 }

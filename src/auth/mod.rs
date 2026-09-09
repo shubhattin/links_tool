@@ -9,7 +9,7 @@ mod routes;
 mod session_issue;
 mod session_token;
 
-pub use admin::require_admin;
+pub use admin::{insert_auth_info, require_admin};
 pub use cookies::{
     ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, append_access_cookie, append_refresh_cookie,
     clear_auth_cookies, cookie_value,

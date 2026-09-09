@@ -1,5 +1,5 @@
 use crate::auth::load_jwt_secret;
-use crate::auth::require_admin;
+use crate::auth::{insert_auth_info, require_admin};
 use crate::db::DbPool;
 use axum::Router;
 use axum::http::StatusCode;
@@ -49,24 +49,18 @@ fn cors_layer_from_env() -> CorsLayer {
         .unwrap_or_default()
 }
 
-// /// Attach stateful axum middleware when `state` is `Some`; no-op for OpenAPI-only builds.
-// macro_rules! with_auth_middleware {
-//     ($router:expr, $state:expr, $middleware:path) => {{
-//         let router = $router;
-//         match $state {
-//             Some(state) => {
-//                 router.route_layer(middleware::from_fn_with_state(state.clone(), $middleware))
-//             }
-//             None => router,
-//         }
-//     }};
-// }
-
 fn links_router(state: Option<&AppState>) -> OpenApiRouter<AppState> {
     let router = crate::routes::links::openapi_router();
     match state {
         Some(state) => {
-            router.route_layer(middleware::from_fn_with_state(state.clone(), require_admin))
+            // Outer → inner: insert_auth_info inserts AuthUser, then require_admin checks role.
+            router
+                .route_layer(middleware::from_fn(require_admin))
+                .route_layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    insert_auth_info,
+                ))
+            // ^ as its a layer so the new layer wraps the previous (reverse order for middleware execution)
         }
         None => router,
     }
