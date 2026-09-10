@@ -226,9 +226,8 @@ pub async fn update_link(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<UpdateLinkBody>,
-    // ^ here if we need we can also add _user: AuthUser to the parameters to get the user id
-    // as for AuthUser the impl FromRequestParts<AppState> is defined in auth/routes.rs
-    // which inturn uses context of the extensions provided by the insert_auth_info middleware
+    // ^ optional: `_user: AuthUser` — FromRequestParts Arc-clones from extensions
+    // (insert_auth_info); access fields via Deref (`user.user_id`, `user.role`)
 ) -> impl IntoResponse {
     if let Some(r) = validate_link(&body.link) {
         return r;

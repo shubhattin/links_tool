@@ -39,12 +39,24 @@ use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
-/// Authenticated caller, inserted by [`crate::auth::insert_auth_info`] into request extensions.
-#[derive(Clone)]
+/// Shared auth payload (one allocation per request).
+#[derive(Debug)]
 #[allow(dead_code)]
-pub struct AuthUser {
+pub struct AuthUserInner {
     pub user_id: String,
     pub role: String,
+}
+
+/// Authenticated caller. Cheap to clone (`Arc` bump); inserted by [`crate::auth::insert_auth_info`].
+#[derive(Clone, Debug)]
+pub struct AuthUser(pub Arc<AuthUserInner>);
+
+impl std::ops::Deref for AuthUser {
+    type Target = AuthUserInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -416,6 +428,8 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         parts.extensions.get::<AuthUser>().cloned().ok_or_else(|| {
+            // The Arc<AuthUserInner> is copied and made available for normal use via the Deref trait
+            // this is becuase of orphan rulw which does not allow us to directl impl for Arc<T> (foriegn struct)
             (
                 StatusCode::UNAUTHORIZED,
                 Json(ErrorBody {

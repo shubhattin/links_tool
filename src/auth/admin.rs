@@ -1,11 +1,11 @@
 //! Auth / admin middleware for protected API routes.
 //!
 //! Stack as outer → inner: [`insert_auth_info`] then [`require_admin`].
-//! `insert_auth_info` verifies the session and inserts [`AuthUser`] into request
-//! extensions; `require_admin` only checks `role == admin` from that value.
-//! Handlers can take [`AuthUser`] via [`FromRequestParts`] without re-verifying JWT.
+//! `insert_auth_info` verifies the session and inserts [`AuthUser`] (`Arc` inside) into
+//! request extensions; `require_admin` only checks `role == admin` from that value.
+//! Handlers can take [`AuthUser`] via [`FromRequestParts`] (cheap `Arc` clone).
 
-use super::routes::AuthUser;
+use super::routes::{AuthUser, AuthUserInner};
 use super::{ACCESS_COOKIE_NAME, ADMIN_ROLE, ErrorBody, cookie_value, verify_access_token};
 use crate::entities::user;
 use crate::state::AppState;
@@ -15,6 +15,7 @@ use axum::http::StatusCode;
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use sea_orm::EntityTrait;
+use std::sync::Arc;
 
 fn json_error(status: StatusCode, message: impl Into<String>) -> Response {
     (
@@ -50,10 +51,10 @@ pub async fn insert_auth_info(
         return json_error(StatusCode::FORBIDDEN, "account banned");
     }
 
-    request.extensions_mut().insert(AuthUser {
+    request.extensions_mut().insert(AuthUser(Arc::new(AuthUserInner {
         user_id: user.id,
         role: user.role,
-    });
+    })));
 
     next.run(request).await
 }
