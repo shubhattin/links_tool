@@ -51,10 +51,12 @@ pub async fn insert_auth_info(
         return json_error(StatusCode::FORBIDDEN, "account banned");
     }
 
-    request.extensions_mut().insert(AuthUser(Arc::new(AuthUserInner {
-        user_id: user.id,
-        role: user.role,
-    })));
+    request
+        .extensions_mut()
+        .insert(AuthUser(Arc::new(AuthUserInner {
+            user_id: user.id,
+            role: user.role,
+        })));
 
     next.run(request).await
 }

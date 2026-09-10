@@ -1,6 +1,13 @@
 <script lang="ts">
-  import { client } from '$lib/api';
-  import type { CreateLinkBody, LinkDto, LinksListResponse2, UpdateLinkBody } from '$lib/api';
+  import { HTTPError } from 'ky';
+  import { api } from '$lib/api/ky';
+  import type {
+    CreateLinkBody,
+    LinkDto,
+    LinksListResponse,
+    UpdateLinkBody
+  } from '$lib/api/api_types';
+  import { zErrorBody, zLinkDto, zLinksListResponse } from '$lib/api/api_types';
   import { queryClient } from '$lib/query_client';
   import { Button } from '$lib/components/ui/button/index.js';
   import { Input } from '$lib/components/ui/input/index.js';
@@ -21,7 +28,6 @@
     getFilteredRowModel,
     getSortedRowModel
   } from '@tanstack/table-core';
-  import { zErrorBody } from '$lib/api/generated/zod.gen';
   import { ChevronDown, LoaderCircle, RefreshCw } from '@lucide/svelte';
   import { toast } from 'svelte-sonner';
 
@@ -29,7 +35,12 @@
 
   const linksQueryOptions = () => ({
     queryKey: LINKS_QUERY_KEY,
-    queryFn: () => client.links.list()
+    queryFn: async (): Promise<LinksListResponse> => {
+      const raw = await api.get('/api/links').json();
+      const parsed = zLinksListResponse.safeParse(raw);
+      if (!parsed.success) throw new Error('invalid response');
+      return parsed.data;
+    }
   });
 
   const links_q = createQuery(linksQueryOptions, () => queryClient);
@@ -52,7 +63,7 @@
   let deleteDialogOpen = $state(false);
   let deleteTarget = $state<LinkDto | null>(null);
 
-  const linkRows = $derived(links_q.data?.data?.links ?? []);
+  const linkRows = $derived(links_q.data?.links ?? []);
   const linksTableKey = $derived(linkRows.map(linkRowKey).join('\n'));
 
   function resetDraft() {
@@ -89,27 +100,22 @@
     deleteDialogOpen = true;
   }
 
-  function apiErrorMessage(error: unknown, fallback: string): string {
-    const parsed = zErrorBody.safeParse(error);
-    return parsed.success ? parsed.data.error : fallback;
+  async function kyErrorMessage(error: unknown, fallback: string): Promise<string> {
+    if (error instanceof HTTPError) {
+      const body = await error.response
+        .clone()
+        .json()
+        .catch(() => null);
+      const parsed = zErrorBody.safeParse(body);
+      if (parsed.success) return parsed.data.error;
+    }
+    return fallback;
   }
 
-  type LinksListQueryData = {
-    data?: LinksListResponse2;
-    response?: Response;
-    error?: unknown;
-  };
-
   function patchLinksCache(updater: (links: LinkDto[]) => LinkDto[]) {
-    queryClient.setQueryData<LinksListQueryData>(LINKS_QUERY_KEY, (old) => {
-      if (!old?.data?.links) return old;
-      return {
-        ...old,
-        data: {
-          ...old.data,
-          links: updater(old.data.links)
-        }
-      };
+    queryClient.setQueryData<LinksListResponse>(LINKS_QUERY_KEY, (old) => {
+      if (!old?.links) return old;
+      return { links: updater(old.links) };
     });
   }
 
@@ -130,11 +136,15 @@
   const create_mut = createMutation(
     () => ({
       mutationFn: async (body: CreateLinkBody) => {
-        const result = await client.links.create({ body, throwOnError: false });
-        if (result.error || !result.response?.ok) {
-          throw new Error(apiErrorMessage(result.error, 'failed to create link'));
+        try {
+          const raw = await api.post('/api/links', { json: body }).json();
+          const parsed = zLinkDto.safeParse(raw);
+          if (!parsed.success) throw new Error('invalid response');
+          return parsed.data;
+        } catch (error) {
+          if (error instanceof Error && error.message === 'invalid response') throw error;
+          throw new Error(await kyErrorMessage(error, 'failed to create link'));
         }
-        return result.data;
       },
       onSuccess: async (link) => {
         if (link) patchLinksCache((links) => [...links, link]);
@@ -154,11 +164,17 @@
   const update_mut = createMutation(
     () => ({
       mutationFn: async ({ id, body }: { id: string; body: UpdateLinkBody }) => {
-        const result = await client.links.update({ path: { id }, body, throwOnError: false });
-        if (result.error || !result.response?.ok) {
-          throw new Error(apiErrorMessage(result.error, 'failed to update link'));
+        try {
+          const raw = await api
+            .patch(`/api/links/${encodeURIComponent(id)}`, { json: body })
+            .json();
+          const parsed = zLinkDto.safeParse(raw);
+          if (!parsed.success) throw new Error('invalid response');
+          return parsed.data;
+        } catch (error) {
+          if (error instanceof Error && error.message === 'invalid response') throw error;
+          throw new Error(await kyErrorMessage(error, 'failed to update link'));
         }
-        return result.data;
       },
       onSuccess: async (link, { id, body }) => {
         const updated: LinkDto = link ?? { id, ...body };
@@ -179,9 +195,10 @@
   const delete_mut = createMutation(
     () => ({
       mutationFn: async (id: string) => {
-        const result = await client.links.delete({ path: { id }, throwOnError: false });
-        if (result.error || !result.response?.ok) {
-          throw new Error(apiErrorMessage(result.error, 'failed to delete link'));
+        try {
+          await api.delete(`/api/links/${encodeURIComponent(id)}`);
+        } catch (error) {
+          throw new Error(await kyErrorMessage(error, 'failed to delete link'));
         }
         return id;
       },

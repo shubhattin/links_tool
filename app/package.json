@@ -5,19 +5,15 @@
   "scripts": {
     "dev": "vite dev",
     "sync": "svelte-kit sync",
-    "openapi-ts": "openapi-ts",
-    "sync-api": "bash ../scripts/sync-api.sh",
-    "check-api": "bash ../scripts/check-api-codegen.sh",
-    "build": "bash ../scripts/sync-api.sh --release && svelte-kit sync && vite build",
+    "build": "svelte-kit sync && vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && bun run check-api && svelte-check --tsconfig ./tsconfig.json",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "lint": "prettier --check .",
     "format": "prettier --write ."
   },
   "devDependencies": {
     "@fontsource-variable/inter": "^5.2.8",
-    "@hey-api/openapi-ts": "0.97.1",
     "@internationalized/date": "^3.12.0",
     "@lucide/svelte": "^1.17.0",
     "@sveltejs/adapter-static": "^3.0.10",

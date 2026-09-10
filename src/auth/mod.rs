@@ -16,8 +16,7 @@ pub use cookies::{
 };
 pub use jwt::{AccessClaims, issue_access_token, verify_access_token};
 pub use routes::{
-    AuthUser, ErrorBody, SessionResponse, SignInBody, SignUpBody, UserDto, load_jwt_secret,
-    openapi_router, router,
+    AuthUser, ErrorBody, SessionResponse, SignInBody, SignUpBody, UserDto, load_jwt_secret, router,
 };
 pub use session_token::issue_refresh_session;
 

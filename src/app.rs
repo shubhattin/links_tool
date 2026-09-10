@@ -8,8 +8,6 @@ use axum::http::header::HeaderValue;
 use axum::middleware;
 use axum::response::IntoResponse;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
-use utoipa::OpenApi;
-use utoipa_axum::router::OpenApiRouter;
 
 pub use crate::state::AppState;
 
@@ -49,40 +47,24 @@ fn cors_layer_from_env() -> CorsLayer {
         .unwrap_or_default()
 }
 
-fn links_router(state: Option<&AppState>) -> OpenApiRouter<AppState> {
-    let router = crate::routes::links::openapi_router();
-    match state {
-        Some(state) => {
-            // Outer → inner: insert_auth_info inserts AuthUser, then require_admin checks role.
-            router
-                .route_layer(middleware::from_fn(require_admin))
-                .route_layer(middleware::from_fn_with_state(
-                    state.clone(),
-                    insert_auth_info,
-                ))
-            // ^ as its a layer so the new layer wraps the previous (reverse order for middleware execution)
-        }
-        None => router,
-    }
-}
-
-fn compose_openapi_router(state: Option<&AppState>) -> OpenApiRouter<AppState> {
-    OpenApiRouter::with_openapi(crate::openapi::ApiDoc::openapi())
-        .nest("/api/auth", crate::auth::openapi_router())
-        .nest("/api/links", links_router(state))
-        .merge(crate::redirect::openapi_router())
-        .fallback(fallback)
-}
-
-/// Composed OpenAPI-aware router (auth + links + redirects).
-pub fn openapi_router() -> OpenApiRouter<AppState> {
-    compose_openapi_router(None)
+fn links_router(state: &AppState) -> Router<AppState> {
+    crate::routes::links::router()
+        // Outer → inner: insert_auth_info inserts AuthUser, then require_admin checks role.
+        .route_layer(middleware::from_fn(require_admin))
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            insert_auth_info,
+        ))
+    // ^ as its a layer so the new layer wraps the previous (reverse order for middleware execution)
 }
 
 /// Axum router for redirect API and auth (no Vercel-specific layers).
 pub fn router(state: AppState) -> Router {
-    compose_openapi_router(Some(&state))
+    Router::new()
+        .nest("/api/auth", crate::auth::router())
+        .nest("/api/links", links_router(&state))
+        .merge(crate::redirect::router())
+        .fallback(fallback)
         .with_state(state)
         .layer(cors_layer_from_env())
-        .into()
 }

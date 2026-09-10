@@ -1,15 +1,16 @@
+import { HTTPError } from 'ky';
 import {
-  client,
-  type SessionResponse,
-  type SignInBody,
-  type SignUpBody,
-  type UserDto,
   zErrorBody,
   zSessionResponse,
   zSignInBody,
   zSignUpBody,
-  zUserDto
-} from '$lib/api';
+  zUserDto,
+  type SessionResponse,
+  type SignInBody,
+  type SignUpBody,
+  type UserDto
+} from '$lib/api/api_types';
+import { api } from '$lib/api/ky';
 import { queryClient } from './query_client';
 
 export type AuthUser = UserDto;
@@ -24,7 +25,7 @@ export type SignUpInput = SignUpBody;
 export type SignInInput = SignInBody;
 export type { SessionResponse };
 
-export { zUserDto as authUserSchema, zSessionResponse as sessionResponseSchema } from '$lib/api';
+export { zUserDto as authUserSchema, zSessionResponse as sessionResponseSchema };
 
 export const AUTH_QUERY_KEY = ['auth', 'me'] as const;
 
@@ -35,12 +36,6 @@ const ACCESS_TOKEN_TTL_SECS = 15 * 60;
 const AUTH_ME_RETRY_LIMIT = 1;
 
 type AuthSessionResult = { ok: true; data: SessionResponse } | { ok: false; error: string };
-
-type SdkResult = {
-  data?: unknown;
-  error?: unknown;
-  response?: Response;
-};
 
 /** Thrown on 401 from `/me` so TanStack Query can retry once after token refresh. */
 class AuthSessionExpiredError extends Error {
@@ -61,17 +56,30 @@ export class AuthFetchError extends Error {
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 let tokenRefreshPromise: Promise<boolean> | null = null;
 
+async function parseErrorMessage(error: unknown, fallback: string): Promise<string> {
+  if (error instanceof HTTPError) {
+    const body = await error.response
+      .clone()
+      .json()
+      .catch(() => null);
+    const parsed = zErrorBody.safeParse(body);
+    if (parsed.success) return parsed.data.error;
+  }
+  return fallback;
+}
+
 async function fetchMeResponse(): Promise<AuthUser> {
-  const result = await client.auth.me({ throwOnError: false });
-
-  if (result.response?.status === 401) {
-    throw new AuthSessionExpiredError();
+  let raw: unknown;
+  try {
+    raw = await api.get('/api/auth/me').json();
+  } catch (error) {
+    if (error instanceof HTTPError && error.response.status === 401) {
+      throw new AuthSessionExpiredError();
+    }
+    throw new AuthFetchError(await parseErrorMessage(error, 'failed to load session'));
   }
-  if (result.error || !result.response?.ok) {
-    throw new AuthFetchError('failed to load session');
-  }
 
-  const parsed = zUserDto.safeParse(result.data);
+  const parsed = zUserDto.safeParse(raw);
   if (!parsed.success) {
     throw new AuthFetchError('invalid session response');
   }
@@ -133,10 +141,8 @@ export async function refreshSessionTokens(): Promise<boolean> {
 
   tokenRefreshPromise = (async () => {
     try {
-      const result = await client.auth.refresh({ throwOnError: false });
-      if (result.error || !result.response?.ok) return false;
-
-      const parsed = zSessionResponse.safeParse(result.data);
+      const raw = await api.post('/api/auth/refresh').json();
+      const parsed = zSessionResponse.safeParse(raw);
       if (!parsed.success) return false;
 
       applySessionExpiry(parsed.data.expires_in);
@@ -189,7 +195,7 @@ export async function completeAuth(session: SessionResponse): Promise<boolean> {
 
 export async function signOut() {
   try {
-    await client.auth.signOut({ throwOnError: false });
+    await api.post('/api/auth/sign-out');
   } finally {
     clearSession();
   }
@@ -200,22 +206,21 @@ export function scheduleProactiveRefresh() {
   scheduleRefresh(ACCESS_TOKEN_TTL_SECS);
 }
 
-async function requestAuthSession(call: () => Promise<SdkResult>): Promise<AuthSessionResult> {
+async function requestAuthSession(
+  path: '/api/auth/sign-up' | '/api/auth/sign-in',
+  body: unknown
+): Promise<AuthSessionResult> {
   try {
-    const result = await call();
-    if (result.error || !result.response?.ok) {
-      const error = zErrorBody.safeParse(result.error);
-      return {
-        ok: false,
-        error: error.success ? error.data.error : 'request failed'
-      };
-    }
-    const data = zSessionResponse.safeParse(result.data);
+    const raw = await api.post(path, { json: body }).json();
+    const data = zSessionResponse.safeParse(raw);
     if (!data.success) {
       return { ok: false, error: 'invalid response' };
     }
     return { ok: true, data: data.data };
   } catch (err) {
+    if (err instanceof HTTPError) {
+      return { ok: false, error: await parseErrorMessage(err, 'request failed') };
+    }
     return {
       ok: false,
       error: err instanceof Error && err.message ? err.message : 'network error'
@@ -228,7 +233,7 @@ export async function apiSignUp(body: SignUpInput): Promise<AuthSessionResult> {
   if (!input.success) {
     return { ok: false, error: input.error.issues[0]?.message ?? 'invalid input' };
   }
-  return requestAuthSession(() => client.auth.signUp({ body: input.data, throwOnError: false }));
+  return requestAuthSession('/api/auth/sign-up', input.data);
 }
 
 export async function apiSignIn(body: SignInInput): Promise<AuthSessionResult> {
@@ -236,5 +241,5 @@ export async function apiSignIn(body: SignInInput): Promise<AuthSessionResult> {
   if (!input.success) {
     return { ok: false, error: input.error.issues[0]?.message ?? 'invalid input' };
   }
-  return requestAuthSession(() => client.auth.signIn({ body: input.data, throwOnError: false }));
+  return requestAuthSession('/api/auth/sign-in', input.data);
 }

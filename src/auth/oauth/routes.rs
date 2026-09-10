@@ -9,13 +9,13 @@ use crate::auth::oauth::state_cookie::{
 };
 use crate::auth::session_issue::{apply_session_cookies, issue_auth_session};
 use crate::state::AppState;
+use axum::Router;
 use axum::extract::Query;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Redirect, Response};
+use axum::routing::get;
 use serde::Deserialize;
-use utoipa_axum::router::OpenApiRouter;
-use utoipa_axum::routes;
 
 #[derive(Debug, Deserialize)]
 pub struct OAuthCallbackQuery {
@@ -58,16 +58,6 @@ async fn oauth_success_redirect(
 }
 
 /// `GET /api/auth/google` — redirect to Google OAuth.
-#[utoipa::path(
-    get,
-    path = "/google",
-    operation_id = "auth.google",
-    tag = "auth",
-    responses(
-        (status = 302, description = "Redirect to Google authorization"),
-        (status = 500, description = "OAuth configuration error"),
-    )
-)]
 pub async fn google_start(State(state): State<AppState>) -> Response {
     let env = match load_oauth_env() {
         Ok(e) => e,
@@ -91,20 +81,6 @@ pub async fn google_start(State(state): State<AppState>) -> Response {
 }
 
 /// `GET /api/auth/callback/google` — Google OAuth callback.
-#[utoipa::path(
-    get,
-    path = "/callback/google",
-    operation_id = "auth.callbackGoogle",
-    tag = "auth",
-    params(
-        ("code" = Option<String>, Query, description = "Authorization code"),
-        ("state" = Option<String>, Query, description = "CSRF state"),
-        ("error" = Option<String>, Query, description = "Provider error"),
-    ),
-    responses(
-        (status = 302, description = "Redirect to frontend with session cookies or error"),
-    )
-)]
 pub async fn google_callback(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -146,16 +122,6 @@ pub async fn google_callback(
 }
 
 /// `GET /api/auth/github` — redirect to GitHub OAuth.
-#[utoipa::path(
-    get,
-    path = "/github",
-    operation_id = "auth.github",
-    tag = "auth",
-    responses(
-        (status = 302, description = "Redirect to GitHub authorization"),
-        (status = 500, description = "OAuth configuration error"),
-    )
-)]
 pub async fn github_start(State(state): State<AppState>) -> Response {
     let env = match load_oauth_env() {
         Ok(e) => e,
@@ -179,20 +145,6 @@ pub async fn github_start(State(state): State<AppState>) -> Response {
 }
 
 /// `GET /api/auth/callback/github` — GitHub OAuth callback.
-#[utoipa::path(
-    get,
-    path = "/callback/github",
-    operation_id = "auth.callbackGithub",
-    tag = "auth",
-    params(
-        ("code" = Option<String>, Query, description = "Authorization code"),
-        ("state" = Option<String>, Query, description = "CSRF state"),
-        ("error" = Option<String>, Query, description = "Provider error"),
-    ),
-    responses(
-        (status = 302, description = "Redirect to frontend with session cookies or error"),
-    )
-)]
 pub async fn github_callback(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -233,10 +185,10 @@ pub async fn github_callback(
     }
 }
 
-pub fn openapi_router() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new()
-        .routes(routes!(google_start))
-        .routes(routes!(google_callback))
-        .routes(routes!(github_start))
-        .routes(routes!(github_callback))
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/google", get(google_start))
+        .route("/callback/google", get(google_callback))
+        .route("/github", get(github_start))
+        .route("/callback/github", get(github_callback))
 }

@@ -31,13 +31,11 @@ use axum::extract::{FromRequestParts, State};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
+use axum::routing::{get, post};
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use utoipa::ToSchema;
-use utoipa_axum::router::OpenApiRouter;
-use utoipa_axum::routes;
 
 /// Shared auth payload (one allocation per request).
 #[derive(Debug)]
@@ -59,20 +57,20 @@ impl std::ops::Deref for AuthUser {
     }
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize)]
 pub struct SignUpBody {
     pub email: String,
     pub password: String,
     pub name: String,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize)]
 pub struct SignInBody {
     pub email: String,
     pub password: String,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
 pub struct UserDto {
     pub id: String,
     pub email: String,
@@ -86,13 +84,12 @@ pub struct UserDto {
 }
 
 /// Cookie-only session response; no JWT in the body.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
 pub struct SessionResponse {
-    #[schema(value_type = i32, example = 900)]
     pub expires_in: i64,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
 pub struct ErrorBody {
     pub error: String,
 }
@@ -117,36 +114,18 @@ async fn auth_success(state: &AppState, user: &user::Model) -> Result<Response, 
     Ok(response)
 }
 
-/// Auth sub-router with OpenAPI path registration; nest at `/api/auth`.
-pub fn openapi_router() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new()
-        .routes(routes!(me))
-        .routes(routes!(sign_up))
-        .routes(routes!(sign_in))
-        .routes(routes!(refresh))
-        .routes(routes!(sign_out))
-        .merge(crate::auth::oauth::openapi_router())
-}
-
-/// Auth sub-router (Axum only).
+/// Auth sub-router (nest at `/api/auth`).
 pub fn router() -> Router<AppState> {
-    openapi_router().into()
+    Router::new()
+        .route("/me", get(me))
+        .route("/sign-up", post(sign_up))
+        .route("/sign-in", post(sign_in))
+        .route("/refresh", post(refresh))
+        .route("/sign-out", post(sign_out))
+        .merge(crate::auth::oauth::router())
 }
 
 /// `GET /api/auth/me` — current user from access cookie (no JWT in response body).
-#[utoipa::path(
-    get,
-    path = "/me",
-    operation_id = "auth.me",
-    tag = "auth",
-    security(("access_cookie" = [])),
-    responses(
-        (status = 200, description = "Current user", body = UserDto),
-        (status = 401, description = "Not authenticated", body = ErrorBody),
-        (status = 403, description = "Account banned", body = ErrorBody),
-        (status = 500, description = "Internal error", body = ErrorBody),
-    )
-)]
 pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> Response {
     // Read and verify access cookie JWT.
     let Some(token) = cookie_value(&headers, ACCESS_COOKIE_NAME) else {
@@ -179,19 +158,6 @@ pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> Response {
 }
 
 /// `POST /api/auth/sign-up` — register with email, password, name; sets auth cookies.
-#[utoipa::path(
-    post,
-    path = "/sign-up",
-    operation_id = "auth.signUp",
-    tag = "auth",
-    request_body = SignUpBody,
-    responses(
-        (status = 200, description = "Session created; Set-Cookie headers set", body = SessionResponse),
-        (status = 400, description = "Validation error", body = ErrorBody),
-        (status = 409, description = "Email already registered", body = ErrorBody),
-        (status = 500, description = "Internal error", body = ErrorBody),
-    )
-)]
 pub async fn sign_up(State(state): State<AppState>, Json(body): Json<SignUpBody>) -> Response {
     let Some(email) = normalize_email(&body.email) else {
         return json_error(StatusCode::BAD_REQUEST, "invalid email");
@@ -279,20 +245,6 @@ pub async fn sign_up(State(state): State<AppState>, Json(body): Json<SignUpBody>
 }
 
 /// `POST /api/auth/sign-in` — login; sets auth cookies.
-#[utoipa::path(
-    post,
-    path = "/sign-in",
-    operation_id = "auth.signIn",
-    tag = "auth",
-    request_body = SignInBody,
-    responses(
-        (status = 200, description = "Session created; Set-Cookie headers set", body = SessionResponse),
-        (status = 400, description = "Validation error", body = ErrorBody),
-        (status = 401, description = "Invalid credentials", body = ErrorBody),
-        (status = 403, description = "Account banned", body = ErrorBody),
-        (status = 500, description = "Internal error", body = ErrorBody),
-    )
-)]
 pub async fn sign_in(State(state): State<AppState>, Json(body): Json<SignInBody>) -> Response {
     let Some(email) = normalize_email(&body.email) else {
         return json_error(StatusCode::BAD_REQUEST, "invalid email");
@@ -337,19 +289,6 @@ pub async fn sign_in(State(state): State<AppState>, Json(body): Json<SignInBody>
 }
 
 /// `POST /api/auth/refresh` — rotate refresh session; new access + refresh cookies.
-#[utoipa::path(
-    post,
-    path = "/refresh",
-    operation_id = "auth.refresh",
-    tag = "auth",
-    security(("refresh_cookie" = [])),
-    responses(
-        (status = 200, description = "Session rotated; Set-Cookie headers set", body = SessionResponse),
-        (status = 401, description = "Invalid or missing refresh token", body = ErrorBody),
-        (status = 403, description = "Account banned", body = ErrorBody),
-        (status = 500, description = "Internal error", body = ErrorBody),
-    )
-)]
 pub async fn refresh(State(state): State<AppState>, headers: HeaderMap) -> Response {
     let _ = maybe_purge_expired_sessions(&state.db).await;
     let raw = match cookie_value(&headers, REFRESH_COOKIE_NAME) {
@@ -398,17 +337,6 @@ pub async fn refresh(State(state): State<AppState>, headers: HeaderMap) -> Respo
 }
 
 /// `POST /api/auth/sign-out` — revoke session and clear auth cookies.
-#[utoipa::path(
-    post,
-    path = "/sign-out",
-    operation_id = "auth.signOut",
-    tag = "auth",
-    security(("refresh_cookie" = [])),
-    responses(
-        (status = 204, description = "Signed out; cookies cleared"),
-        (status = 500, description = "Internal error", body = ErrorBody),
-    )
-)]
 pub async fn sign_out(State(state): State<AppState>, headers: HeaderMap) -> Response {
     let mut response = StatusCode::NO_CONTENT.into_response();
     if let Some(raw) = cookie_value(&headers, REFRESH_COOKIE_NAME)

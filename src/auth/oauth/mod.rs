@@ -7,4 +7,4 @@ mod link;
 mod routes;
 mod state_cookie;
 
-pub use routes::openapi_router;
+pub use routes::router;

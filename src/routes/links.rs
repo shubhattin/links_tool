@@ -1,4 +1,4 @@
-//! Links API (mounted at `/api/links` in [`crate::app::openapi_router`]).
+//! Links API (mounted at `/api/links` in [`crate::app::router`]).
 //!
 //! | Method | Path | Handler |
 //! |--------|------|---------|
@@ -17,14 +17,12 @@ use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use axum::routing::{get, patch};
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
-use utoipa_axum::router::OpenApiRouter;
-use utoipa_axum::routes;
 
 /// One short link and its stored attributes.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
 pub struct LinkDto {
     pub id: String,
     pub enabled: bool,
@@ -47,12 +45,12 @@ impl From<Link> for LinkDto {
 }
 
 /// `GET /api/links` response body.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
 pub struct LinksListResponse {
     pub links: Vec<LinkDto>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize)]
 pub struct CreateLinkBody {
     pub id: String,
     pub enabled: bool,
@@ -61,7 +59,7 @@ pub struct CreateLinkBody {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize)]
 pub struct UpdateLinkBody {
     pub enabled: bool,
     pub link: String,
@@ -109,29 +107,14 @@ fn validate_link(link: &str) -> Option<Response> {
     None
 }
 
-/// Links sub-router with OpenAPI path registration; nest at `/api/links`.
-pub fn openapi_router() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new().routes(routes!(list_links, create_link, update_link, delete_link))
-}
-
-/// Links sub-router (Axum only).
+/// Links sub-router (nest at `/api/links`).
 pub fn router() -> Router<AppState> {
-    openapi_router().into()
+    Router::new()
+        .route("/", get(list_links).post(create_link))
+        .route("/{id}", patch(update_link).delete(delete_link))
 }
 
 /// `GET /api/links` — all short links (requires access cookie).
-#[utoipa::path(
-    get,
-    path = "/",
-    operation_id = "links.list",
-    tag = "links",
-    security(("access_cookie" = [])),
-    responses(
-        (status = 200, description = "All short links", body = LinksListResponse),
-        (status = 401, description = "Not authenticated", body = ErrorBody),
-        (status = 500, description = "Internal error"),
-    )
-)]
 pub async fn list_links(State(state): State<AppState>) -> impl IntoResponse {
     match links::Entity::find()
         .all(&state.db)
@@ -147,21 +130,6 @@ pub async fn list_links(State(state): State<AppState>) -> impl IntoResponse {
 }
 
 /// `POST /api/links` — create a short link.
-#[utoipa::path(
-    post,
-    path = "/",
-    operation_id = "links.create",
-    tag = "links",
-    security(("access_cookie" = [])),
-    request_body = CreateLinkBody,
-    responses(
-        (status = 201, description = "Created", body = LinkDto),
-        (status = 400, description = "Invalid input", body = ErrorBody),
-        (status = 401, description = "Not authenticated", body = ErrorBody),
-        (status = 409, description = "Link id already exists", body = ErrorBody),
-        (status = 500, description = "Internal error"),
-    )
-)]
 pub async fn create_link(
     State(state): State<AppState>,
     Json(body): Json<CreateLinkBody>,
@@ -206,22 +174,6 @@ pub async fn create_link(
 }
 
 /// `PATCH /api/links/{id}` — update a short link.
-#[utoipa::path(
-    patch,
-    path = "/{id}",
-    operation_id = "links.update",
-    tag = "links",
-    security(("access_cookie" = [])),
-    params(("id" = String, Path, description = "Short link id")),
-    request_body = UpdateLinkBody,
-    responses(
-        (status = 200, description = "Updated", body = LinkDto),
-        (status = 400, description = "Invalid input", body = ErrorBody),
-        (status = 401, description = "Not authenticated", body = ErrorBody),
-        (status = 404, description = "Not found", body = ErrorBody),
-        (status = 500, description = "Internal error"),
-    )
-)]
 pub async fn update_link(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -255,20 +207,6 @@ pub async fn update_link(
 }
 
 /// `DELETE /api/links/{id}` — delete a short link.
-#[utoipa::path(
-    delete,
-    path = "/{id}",
-    operation_id = "links.delete",
-    tag = "links",
-    security(("access_cookie" = [])),
-    params(("id" = String, Path, description = "Short link id")),
-    responses(
-        (status = 204, description = "Deleted"),
-        (status = 401, description = "Not authenticated", body = ErrorBody),
-        (status = 404, description = "Not found", body = ErrorBody),
-        (status = 500, description = "Internal error"),
-    )
-)]
 pub async fn delete_link(
     State(state): State<AppState>,
     Path(id): Path<String>,
