@@ -1,11 +1,10 @@
 use crate::auth::load_jwt_secret;
-use crate::auth::{insert_auth_info, require_admin};
 use crate::db::DbPool;
+use crate::with_require_admin;
 use axum::Router;
 use axum::http::StatusCode;
 use axum::http::Uri;
 use axum::http::header::HeaderValue;
-use axum::middleware;
 use axum::response::IntoResponse;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use utoipa::OpenApi;
@@ -49,27 +48,13 @@ fn cors_layer_from_env() -> CorsLayer {
         .unwrap_or_default()
 }
 
-fn links_router(state: Option<&AppState>) -> OpenApiRouter<AppState> {
-    let router = crate::routes::links::openapi_router();
-    match state {
-        Some(state) => {
-            // Outer → inner: insert_auth_info inserts AuthUser, then require_admin checks role.
-            router
-                .route_layer(middleware::from_fn(require_admin))
-                .route_layer(middleware::from_fn_with_state(
-                    state.clone(),
-                    insert_auth_info,
-                ))
-            // ^ as its a layer so the new layer wraps the previous (reverse order for middleware execution)
-        }
-        None => router,
-    }
-}
-
 fn compose_openapi_router(state: Option<&AppState>) -> OpenApiRouter<AppState> {
     OpenApiRouter::with_openapi(crate::openapi::ApiDoc::openapi())
         .nest("/api/auth", crate::auth::openapi_router())
-        .nest("/api/links", links_router(state))
+        .nest(
+            "/api/links",
+            with_require_admin!(crate::routes::links::openapi_router(), state),
+        )
         .merge(crate::redirect::openapi_router())
         .fallback(fallback)
 }

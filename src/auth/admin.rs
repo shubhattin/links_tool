@@ -51,10 +51,12 @@ pub async fn insert_auth_info(
         return json_error(StatusCode::FORBIDDEN, "account banned");
     }
 
-    request.extensions_mut().insert(AuthUser(Arc::new(AuthUserInner {
-        user_id: user.id,
-        role: user.role,
-    })));
+    request
+        .extensions_mut()
+        .insert(AuthUser(Arc::new(AuthUserInner {
+            user_id: user.id,
+            role: user.role,
+        })));
 
     next.run(request).await
 }
@@ -71,3 +73,32 @@ pub async fn require_admin(request: Request, next: Next) -> Response {
 
     next.run(request).await
 }
+
+/// Attach `insert_auth_info` + `require_admin` when `$state` is `Some`; otherwise return `$router` as-is.
+///
+/// ### Arguments
+/// - `$router` — base router expression (`OpenApiRouter<AppState>` / anything with `.route_layer`)
+/// - `$state` — `Option<&AppState>`: `Some` applies the auth stack, `None` leaves `$router` unchanged
+///
+/// # Example
+/// ```ignore
+/// with_require_admin!(crate::routes::links::openapi_router(), state)
+/// ```
+#[macro_export]
+macro_rules! with_require_admin {
+    ($router:expr, $state:expr) => {{
+        let router = $router;
+        match $state {
+            Some(state) => router
+                .route_layer(::axum::middleware::from_fn($crate::auth::require_admin))
+                .route_layer(::axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    $crate::auth::insert_auth_info,
+                )),
+            None => router,
+        }
+    }};
+}
+// Uses `$crate` / `::axum` so call sites do not need those imports.
+// Layer order is reverse of execution (last added runs first):
+// outer `insert_auth_info` → inner `require_admin` → handler.
