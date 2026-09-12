@@ -49,7 +49,13 @@ fn cors_layer_from_env() -> CorsLayer {
 }
 
 fn compose_openapi_router(state: Option<&AppState>) -> OpenApiRouter<AppState> {
-    OpenApiRouter::with_openapi(crate::openapi::ApiDoc::openapi())
+    let router = if cfg!(debug_assertions) {
+        OpenApiRouter::with_openapi(crate::openapi::ApiDoc::openapi())
+    } else {
+        OpenApiRouter::new()
+    };
+
+    router
         .nest("/api/auth", crate::auth::openapi_router())
         .nest(
             "/api/links",
