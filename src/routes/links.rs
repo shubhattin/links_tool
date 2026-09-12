@@ -191,12 +191,6 @@ pub async fn create_link(
             if matches!(
                 err.sql_err(),
                 Some(sea_orm::SqlErr::UniqueConstraintViolation(_))
-            ) || matches!(
-                &err,
-                sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(sqlx_err))
-                    if sqlx_err
-                        .as_database_error()
-                        .is_some_and(|e| e.is_unique_violation())
             ) =>
         {
             json_error(StatusCode::CONFLICT, "link id already exists")

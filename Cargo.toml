@@ -32,15 +32,6 @@ sea-orm = { version = "1.1", default-features = false, features = [
     "sqlx-postgres",
     "with-chrono",
 ] }
-sea-query = { version = "0.32", default-features = false, features = [
-    "backend-postgres",
-    "derive",
-] }
-sqlx = { version = "0.8", default-features = false, features = [
-    "macros",
-    "postgres",
-    "runtime-tokio-rustls",
-] }
 utoipa = { version = "5", features = ["axum_extras", "macros"] }
 utoipa-axum = "0.2"
 
